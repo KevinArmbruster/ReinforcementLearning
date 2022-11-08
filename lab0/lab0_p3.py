@@ -33,7 +33,7 @@ optim = torch.optim.Adam(nn.parameters(), lr=0.01)
 
 ### PLAY ENVIRONMENT ###
 # The next while loop plays 5 episode of the environment
-for episode in range(50):
+for episode in range(50000):
     state = env.reset()  # Reset environment, returns initial state
     done = False  # Boolean variable used to indicate if an episode terminated
 
@@ -67,7 +67,7 @@ for episode in range(50):
 
             # get states from batch
             batch_states = np.array(batch[0])
-            states = torch.tensor(batch_states, requires_grad=False)
+            states = torch.tensor(batch_states, requires_grad=True)
 
             # run NN for action prediction
             action_predictions = nn(states)
@@ -82,7 +82,7 @@ for episode in range(50):
             loss.backward()
 
             # clip gradients
-            torch.nn.utils.clip_grad_norm_(nn.parameters(), 1.)
+            torch.nn.utils.clip_grad_norm_(nn.parameters(), 0.1)
 
             # perform backprop
             optim.step()
