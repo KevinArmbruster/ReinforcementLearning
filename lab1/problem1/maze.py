@@ -36,7 +36,7 @@ class Maze:
 
     # Reward values
     STEP_REWARD = -1
-    GOAL_REWARD = 1
+    GOAL_REWARD = 0
     IMPOSSIBLE_REWARD = -100
     DEAD_REWARD = -1000000
 
@@ -77,6 +77,9 @@ class Maze:
         return states, map
 
     def __move(self, state, action) -> list:
+        if self.__check_player_dead(state) or self.check_player_escaped(state):
+            return [state]
+
         next_p_s = self.__move_player(state=state, action=action)
         next_states = self.__get_possible_states_after_minotaur(state=next_p_s)
         return next_states
@@ -147,24 +150,29 @@ class Maze:
 
                 for next_s in possible_next_states:
                     # with stochastic rewards, use the average
-                    rewards[s, a] = self.__reward_f(s, a, next_s)
+                    rewards[s, a] += self.__reward_f(s, a, next_s)
+                rewards[s, a] /= len(possible_next_states)
+
         return rewards
 
     def __reward_f(self, s, a, next_s):
-        if self.__check_player_dead(s): #self.__check_player_dead(s):  # or self.__check_player_dead(next_s):
+        if self.__check_player_dead(s):
             reward = self.DEAD_REWARD
-        elif self.maze[self.states[s][0:2]] == 2:
+        elif self.check_player_escaped(s):
             reward = self.GOAL_REWARD
         elif s == next_s and a != self.STAY:  # move is programmed to STAY if action is not possible
             reward = self.IMPOSSIBLE_REWARD
         else:
             reward = self.STEP_REWARD
 
-        return reward * self.transition_probabilities[next_s, s, a]
+        return reward  # * self.transition_probabilities[next_s, s, a]
 
     def __check_player_dead(self, s):
         (y, x, yM, xM) = self.states[s]
         return y == yM and x == xM
+
+    def check_player_escaped(self, s):
+        return self.maze[self.states[s][0:2]] == 2
 
     def simulate_DP(self, start, policy):
         path = list()
@@ -275,7 +283,7 @@ def dynamic_programming(env, horizon):
     return V, policy
 
 
-def value_iteration(env, gamma, epsilon):
+def value_iteration(env, gamma, epsilon, max_iter=200):
     """ Solves the shortest path problem using value iteration
         :input Maze env           : The maze environment in which we seek to
                                     find the shortest path.
@@ -313,7 +321,7 @@ def value_iteration(env, gamma, epsilon):
     BV = np.max(Q, 1)
 
     # Iterate until convergence
-    while np.linalg.norm(V - BV, ord=np.inf) >= tol:
+    while np.linalg.norm(V - BV, ord=np.inf) >= tol and n < max_iter:
         # Increment by one the numbers of iteration
         n += 1
         # Update the value function
@@ -326,7 +334,7 @@ def value_iteration(env, gamma, epsilon):
         # Show error
         # print(np.linalg.norm(V - BV))
 
-    print("Needed iterations: ", n)
+    print("Needed iterations: ", n, ", Final error: ", np.linalg.norm(V - BV, ord=np.inf))
 
     # Compute policy
     policy = np.argmax(Q, 1)
@@ -408,25 +416,28 @@ def animate_solution(maze, path):
 
     # Update the color at each frame
     for i in range(len(path)):
-        if i > 0:
-            if path[i] == path[i - 1]:
-                # goal coloring
-                grid.get_celld()[(path[i][0:2])].set_facecolor(LIGHT_GREEN)
-                grid.get_celld()[(path[i][0:2])].get_text().set_text('Player is out')
-            else:
-                # remove old cell coloring
-                grid.get_celld()[(path[i - 1][0:2])].set_facecolor(col_map[maze[path[i - 1][0:2]]])
-                grid.get_celld()[(path[i - 1][0:2])].get_text().set_text('')
-
-                grid.get_celld()[(path[i - 1][2:])].set_facecolor(col_map[maze[path[i - 1][2:]]])
-                grid.get_celld()[(path[i - 1][2:])].get_text().set_text('')
-
         # new cell coloring
         grid.get_celld()[(path[i][0:2])].set_facecolor(LIGHT_ORANGE)
         grid.get_celld()[(path[i][0:2])].get_text().set_text('Player')
 
         grid.get_celld()[(path[i][2:])].set_facecolor(LIGHT_PURPLE)
         grid.get_celld()[(path[i][2:])].get_text().set_text('Minotaur')
+
+        if i > 0:
+            if path[i] == path[i - 1]:
+                # goal coloring
+                grid.get_celld()[(path[i][0:2])].set_facecolor(LIGHT_GREEN)
+                grid.get_celld()[(path[i][0:2])].get_text().set_text('Player is out')
+
+            if path[i][0:2] != path[i - 1][0:2]:
+                # remove old cell coloring
+                grid.get_celld()[(path[i - 1][0:2])].set_facecolor(col_map[maze[path[i - 1][0:2]]])
+                grid.get_celld()[(path[i - 1][0:2])].get_text().set_text('')
+
+            if path[i][2:] != path[i - 1][2:]:
+                # remove old cell coloring
+                grid.get_celld()[(path[i - 1][2:])].set_facecolor(col_map[maze[path[i - 1][2:]]])
+                grid.get_celld()[(path[i - 1][2:])].get_text().set_text('')
 
         display.display(fig)
         display.clear_output(wait=True)
@@ -435,6 +446,8 @@ def animate_solution(maze, path):
 
 def visualize_policy(env, policy, minotaur_position=(5, 5)):
     maze = env.maze
+    if np.ndim(policy) == 2:
+        policy = policy[:, 0]
 
     # Map a color to each cell in the maze
     col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, -6: LIGHT_RED, -1: LIGHT_RED}
@@ -476,7 +489,7 @@ def visualize_policy(env, policy, minotaur_position=(5, 5)):
             if maze[y, x] == 1:
                 continue
             s = env.map[(y, x, minotaur_position[0], minotaur_position[1])]
-            a = policy[s, 0]
+            a = policy[s]
 
             # https://unicode.org/charts/nameslist/n_2190.html
             if a == 0:
@@ -496,3 +509,36 @@ def visualize_policy(env, policy, minotaur_position=(5, 5)):
     grid.get_celld()[minotaur_position].get_text().set_text('Minotaur')
 
     plt.show()
+
+
+def visualize_probability_over_time_horizons(maze, start=(0, 0, 6, 5), runs=10000, min_H=1, max_H=30):
+    ### NO STAY
+    env = Maze(maze, minotaur_can_stay=False)
+    probabilities_for_plot_no_stay = simulate_DP_over_time_horizons(env, start, runs, max_H, min_H)
+
+    ### STAY
+    env = Maze(maze, minotaur_can_stay=True)
+    probabilities_for_plot_with_stay = simulate_DP_over_time_horizons(env, start, runs, max_H, min_H)
+
+    ### PLOT
+    plt.plot(list(range(1, max_H + 1)), probabilities_for_plot_no_stay, c="blue", label="Minotaur can't stay")
+    plt.plot(list(range(1, max_H + 1)), probabilities_for_plot_with_stay, c="red", label="Minotaur can stay")
+    plt.title("Probability of Escaping over Time Horizons")
+    plt.ylabel("Probability")
+    plt.xlabel("Time Horizon")
+    plt.legend()
+    plt.show()
+
+
+def simulate_DP_over_time_horizons(env, start, runs, max_H, min_H):
+    probabilities = []
+    for h in range(min_H, max_H + 1):
+        prob = 0
+        V, policy_DP_stay = dynamic_programming(env, h)
+
+        for i in range(runs):
+            path = env.simulate_DP(start, policy_DP_stay)
+            prob += env.check_player_escaped(env.map[path[-1]])
+        prob = prob / runs
+        probabilities.append(prob)
+    return probabilities
