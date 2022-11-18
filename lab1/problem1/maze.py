@@ -530,7 +530,7 @@ def visualize_probability_over_time_horizons(maze, start=(0, 0, 6, 5), runs=1000
     plt.show()
 
 
-def simulate_DP_over_time_horizons(env, start, runs, max_H, min_H):
+def simulate_DP_over_time_horizons(env, start=(0, 0, 6, 5), runs=10000, min_H=1, max_H=30):
     probabilities = []
     for h in range(min_H, max_H + 1):
         prob = 0
@@ -540,5 +540,16 @@ def simulate_DP_over_time_horizons(env, start, runs, max_H, min_H):
             path = env.simulate_DP(start, policy_DP_stay)
             prob += env.check_player_escaped(env.map[path[-1]])
         prob = prob / runs
+        print(h, prob)
         probabilities.append(prob)
     return probabilities
+
+def simulate_VI_for_probability(env, gamma, epsilon, start=(0, 0, 6, 5), runs=10000):
+    prob = 0
+    V, policy_VI = value_iteration(env, gamma, epsilon)
+
+    for i in range(runs):
+        path = env.simulate_VI(start, policy_VI)
+        prob += env.check_player_escaped(env.map[path[-1]])
+    prob = prob / runs
+    return prob
