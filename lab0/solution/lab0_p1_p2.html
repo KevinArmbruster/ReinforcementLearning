@@ -14381,7 +14381,7 @@ $$\mathcal{A} = \lbrace \textrm{up}, \textrm{ down}, \textrm{ left}, \textrm{ ri
 </blockquote>
 </li>
 </ul>
-<h3 id="Implementation">Implementation<a class="anchor-link" href="#Implementation">&#182;</a></h3><p>The above MDP formulation is implemented as a class <code>maze.Maze</code> in the file <a href="./maze.py">maze.py</a> which given a matrix description of the maze instanciates the state space, action space, transition probabilities and rewards.</p>
+<h3 id="Implementation">Implementation<a class="anchor-link" href="#Implementation">&#182;</a></h3><p>The above MDP formulation is implemented as a class <code>maze.Maze</code> in the file <a href="maze_lab0.py">maze.py</a> which given a matrix description of the maze instanciates the state space, action space, transition probabilities and rewards.</p>
 <blockquote><p><strong>Note:</strong> In the class <code>maze.Maze</code> each state $s = (i,j)$ is given a unique identifier $s_{id} \in \lbrace 0, , \dots, \vert S \vert -1 \rbrace$. In other words, the state space from an implementation perspective is viewed as the set of integers $\lbrace 0, , \dots, \vert S \vert -1 \rbrace$. This mapping is done via the dictionary <code>self.map</code> and its inverse mapping via the dictionary <code>self.states</code>.</p>
 </blockquote>
 
