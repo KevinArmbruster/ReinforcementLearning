@@ -165,7 +165,7 @@ class Maze:
         else:
             reward = self.STEP_REWARD
 
-        return reward  # * self.transition_probabilities[next_s, s, a]
+        return reward
 
     def __check_player_dead(self, s):
         (y, x, yM, xM) = self.states[s]
