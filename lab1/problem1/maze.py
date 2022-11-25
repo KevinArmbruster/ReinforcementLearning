@@ -441,7 +441,7 @@ def animate_solution(maze, path):
 
         display.display(fig)
         display.clear_output(wait=True)
-        time.sleep(1)
+        time.sleep(0.5)
 
 
 def visualize_policy(env, policy, minotaur_position=(5, 5)):

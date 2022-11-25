@@ -19,6 +19,12 @@ GOLD = '#FFD700'
 
 
 class QLearningMaze:
+    # Cells
+    EMPTY_CELL = 0
+    OBSTACLE_CELL = 1
+    GOAL_CELL = 2
+    KEY_CELL = 3
+
     # Actions
     STAY = 0
     MOVE_LEFT = 1
@@ -36,18 +42,20 @@ class QLearningMaze:
     }
 
     # Reward values
+    STAY_REWARD = -2
     STEP_REWARD = -1
     GOAL_REWARD = 0
     IMPOSSIBLE_REWARD = -100
     DEAD_REWARD = -1000000
 
-    def __init__(self, maze, minotaur_can_stay=False):
+    def __init__(self, maze, minotaur_can_stay=False, prob_minotaur_moves_iid=0.65):
         self.maze = maze
         self.minotaur_can_stay = minotaur_can_stay
         self.actions = self.__actions()
         self.states, self.map = self.__states()
         self.n_actions = len(self.actions)
         self.n_states = len(self.states)
+        self.prob_minotaur_moves_iid = prob_minotaur_moves_iid
         # self.transition_probabilities = self.__transitions()
         # self.rewards = self.__rewards()
 
@@ -64,23 +72,26 @@ class QLearningMaze:
         states = dict()
         map = dict()
         state_no = 0
-        for y in range(self.maze.shape[0]):
-            for x in range(self.maze.shape[1]):
-                for yM in range(self.maze.shape[0]):
-                    for xM in range(self.maze.shape[1]):
-                        if self.maze[y, x] != 1:  # exclude states where player is in wall
-                            state_tpl = (y, x, yM, xM)
-                            states[state_no] = state_tpl
-                            map[state_tpl] = state_no
-                            state_no += 1
+        for key in [0, 1]:
+            for y in range(self.maze.shape[0]):
+                for x in range(self.maze.shape[1]):
+                    for yM in range(self.maze.shape[0]):
+                        for xM in range(self.maze.shape[1]):
+                            if self.maze[y, x] != self.OBSTACLE_CELL:  # exclude states where player is in wall
+                                state_tpl = (y, x, yM, xM, key)
+                                states[state_no] = state_tpl
+                                map[state_tpl] = state_no
+                                state_no += 1
         return states, map
 
     def __move(self, state, action, move_towards_player=False) -> list:
         if self.__check_player_dead(state) or self.check_player_escaped(state):
             return [state]
 
+        # Player
         next_p_s = self.__move_player(state=state, action=action)
 
+        # Minotaur
         if move_towards_player:
             next_states = [self.__get_next_state_when_Minotaur_moves_in_direction_of_player(next_p_s)]
         else:
@@ -88,29 +99,31 @@ class QLearningMaze:
         return next_states
 
     def __move_player(self, state, action):
-        # Compute the future position given current (state, action)
-        y = self.states[state][0] + self.actions[action][0]
-        x = self.states[state][1] + self.actions[action][1]
+        (yP, xP, yM, xM, key) = self.states[state]
+        y = yP + self.actions[action][0]
+        x = xP + self.actions[action][1]
 
         if self.__check_state_possible(y, x):
-            return self.map[(y, x, self.states[state][2], self.states[state][3])]
+            if self.maze[y, x] == self.KEY_CELL:
+                key = 1  # found key
+            return self.map[(y, x, yM, xM, key)]
         else:
             return state
 
     def __get_next_state_when_Minotaur_moves_in_direction_of_player(self, state):
-        (yP, xP, yM, xM) = self.states[state]
+        (yP, xP, yM, xM, key) = self.states[state]
         y = yP - yM
         x = xP - xM
 
         if abs(y) > abs(x):
             yM_new = yM + np.sign(y)
-            return self.map[(yP, xP, yM_new, xM)]
+            return self.map[(yP, xP, yM_new, xM, key)]
         else:
             xM_new = xM + np.sign(x)
-            return self.map[(yP, xP, yM, xM_new)]
+            return self.map[(yP, xP, yM, xM_new, key)]
 
     def __get_possible_states_after_minotaur(self, state):
-        (yP, xP, yM, xM) = self.states[state]
+        (yP, xP, yM, xM, key) = self.states[state]
         possible_next_states = []
 
         for action in self.actions.keys():
@@ -122,7 +135,7 @@ class QLearningMaze:
             xM_new = xM + x_action
 
             if self.__check_state_possible(yM_new, xM_new, walls_walkable=True):
-                state = self.map[(yP, xP, yM_new, xM_new)]
+                state = self.map[(yP, xP, yM_new, xM_new, key)]
                 possible_next_states.append(state)
 
         return possible_next_states
@@ -130,40 +143,8 @@ class QLearningMaze:
     def __check_state_possible(self, y, x, walls_walkable=False):
         impossible = (y < 0) or (y >= self.maze.shape[0]) or \
                      (x < 0) or (x >= self.maze.shape[1]) or \
-                     (not walls_walkable and self.maze[y, x] == 1)
+                     (not walls_walkable and self.maze[y, x] == self.OBSTACLE_CELL)
         return not impossible
-
-    def __transitions(self):
-        """ Computes the transition probabilities for every state action pair.
-            :return numpy.tensor transition probabilities: tensor of transition
-            probabilities of dimension S*S*A
-        """
-        # Initialize the transition probabilities tensor (S,S,A)
-        dimensions = (self.n_states, self.n_states, self.n_actions)
-        transition_probabilities = np.zeros(dimensions)
-
-        # Compute the transition probabilities. Note that the transitions are deterministic.
-        for s in range(self.n_states):
-            for a in range(self.n_actions):
-                possible_next_states = self.__move(s, a)
-                for next_s in possible_next_states:
-                    transition_probabilities[next_s, s, a] = 1 / len(possible_next_states)
-
-        return transition_probabilities
-
-    def __rewards(self):
-        rewards = np.zeros((self.n_states, self.n_actions))
-
-        for s in range(self.n_states):
-            for a in range(self.n_actions):
-                possible_next_states = self.__move(s, a)
-
-                for next_s in possible_next_states:
-                    # with stochastic rewards, use the average
-                    rewards[s, a] += self.__reward_f(s, a, next_s)
-                rewards[s, a] /= len(possible_next_states)
-
-        return rewards
 
     def __reward_f(self, s, a, next_s):
         if self.__check_player_dead(s):
@@ -172,73 +153,47 @@ class QLearningMaze:
             reward = self.GOAL_REWARD
         elif s == next_s and a != self.STAY:  # move is programmed to STAY if action is not possible
             reward = self.IMPOSSIBLE_REWARD
-        else:
+        elif self.states[s][-1] != self.states[next_s][-1]:  # if key is acquired, possible only once
+            reward = self.GOAL_REWARD
+        elif a != self.STAY:
             reward = self.STEP_REWARD
-
-        return reward  # * self.transition_probabilities[next_s, s, a]
+        else:
+            reward = self.STAY_REWARD
+        return reward
 
     def __check_player_dead(self, s):
-        (y, x, yM, xM) = self.states[s]
+        (y, x, yM, xM, key) = self.states[s]
         return y == yM and x == xM
 
     def check_player_escaped(self, s):
-        return self.maze[self.states[s][0:2]] == 2
+        (y, x, yM, xM, key) = self.states[s]
+        return self.maze[y, x] == self.GOAL_CELL and key == 1
 
-    def __simulate_step_with_minotaur_that_can_move_toward_player(self, s, a, prob_to_move_iid=0.65):
-        move_towards_player = np.random.rand() <= prob_to_move_iid
+    def __check_game_ended(self, s):
+        return self.__check_player_dead(s) or self.check_player_escaped(s)
+
+    def __step(self, s, a):
+        move_towards_player = np.random.rand() <= self.prob_minotaur_moves_iid
         next_states = self.__move(s, a, move_towards_player)
         next_s = np.random.choice(next_states, 1)[0]
-        return next_s, self.__reward_f(s, a, next_s)
+        reward = self.__reward_f(s, a, next_s)
+        return next_s, reward
 
-    def simulate_DP(self, start, policy):
-        path = list()
-        # Deduce the horizon from the policy shape
-        horizon = policy.shape[1]
-        # Initialize current state and time
-        t = 0
-        s = self.map[start]
-        # Add the starting position in the maze to the path
-        path.append(start)
-        while t < horizon - 1:
-            # Move to next state given the policy and the current state
-            next_states = self.__move(s, policy[s, t])
-            # random iid movement of minotaur
-            next_s = np.random.choice(next_states, 1)[0]
-            # Add the position in the maze corresponding to the next state
-            # to the path
-            path.append(self.states[next_s])
-            # Update time and state for next iteration
-            t += 1
-            s = next_s
-        return path
-
-    def simulate_VI(self, start, policy):
+    def simulate_path(self, start, policy, max_steps=50):
         path = list()
         # Initialize current state, next state and time
-        t = 1
         s = self.map[start]
-        # Add the starting position in the maze to the path
+        last_s = -1
         path.append(start)
-        # Move to next state given the policy and the current state
-        next_states = self.__move(s, policy[s])
-        # random iid movement of minotaur
-        next_s = np.random.choice(next_states, 1)[0]
-        # Add the position in the maze corresponding to the next state
-        # to the path
-        path.append(self.states[next_s])
-        # Loop while state is not the goal state
-        while s != next_s:
-            # Update state
-            s = next_s
-            # Move to next state given the policy and the current state
-            next_states = self.__move(s, policy[s])
-            # random iid movement of minotaur
-            next_s = np.random.choice(next_states, 1)[0]
-            # Add the position in the maze corresponding to the next state
-            # to the path
+        i = 0
+
+        while last_s != s and i < max_steps:
+            next_s, _ = self.__step(s, policy[s])
             path.append(self.states[next_s])
-            # Update time and state for next iteration
-            t += 1
+
+            last_s = s
+            s = next_s
+            i += 1
         return path
 
     def show(self):
@@ -248,151 +203,93 @@ class QLearningMaze:
         print(self.actions)
         print('The mapping of the states:')
         print(self.map)
-        print('The rewards:')
-        print(self.rewards)
 
-    def episodic_online_q_learning(self, number_episodes=50000, discount_factor=49 / 50, start=(0, 0, 6, 5)):
+    def q_learning(self, start=(0, 0, 6, 5, 0), number_episodes=50000, discount_factor=49 / 50,
+                   step_size_exponent=2 / 3, exploration_prob=0.1):
         # init
-        Q = np.zeros((self.n_states, self.n_actions))  # q values per (s,a)
+        Q = np.ones((self.n_states, self.n_actions))  # q values per (s,a)
         N = np.zeros((self.n_states, self.n_actions))  # count visits per (s,a)
-        s = self.map[start]
 
-        for k in range(number_episodes):
-            last_s = -1
+        history_V_initial_state = []
+
+        for k in range(1, number_episodes+1):
             t = 0
-            while last_s != s:
+            s = self.map[start]  # reset env
+            last_s = -1
+            history_V_initial_state.append(np.max(Q[s, :]))  # V of initial state
+
+            if k % 10000 == 0:
+                print(f"Iteration ", k)
+
+            while last_s != s:  # not self.__check_game_ended(s) and
                 # select action
-                a = self.__epsilon_greedy_policy(Q[s, :])
+                a = self.__epsilon_greedy_policy(Q[s, :], exploration_prob)
                 # observe next state and reward
-                next_s, reward = self.__simulate_step_with_minotaur_that_can_move_toward_player(s, a)
-                # update Q
+                next_s, reward = self.__step(s, a)
+                # update Q with sampled TD error
                 N[s, a] += 1
-                step_size = 1 / (N[s, a] ** (2 / 3))
-                Q[s, a] += step_size * (reward + discount_factor * max(Q[next_s, :]) - Q[s, a])  # TD error?
+                step_size = 1 / (N[s, a] ** step_size_exponent)
+                Q[s, a] += step_size * (reward + discount_factor * np.max(Q[next_s, :]) - Q[s, a])
+
+                # print(s, a, reward, next_s, np.argmax(Q[next_s, :]))
 
                 last_s = s
                 s = next_s
                 t += 1
 
-        return Q
+        # V = np.max(Q, axis=1)  # not needed
+        policy = np.argmax(Q, axis=1)
+        return Q, N, policy, history_V_initial_state
 
-    def __epsilon_greedy_policy(self, Q, epsilon=0.1):
-        if np.random.rand() <= epsilon:
+    def sarsa(self, start=(0, 0, 6, 5, 0), number_episodes=50000, discount_factor=49 / 50, step_size_exponent=2 / 3,
+              exploration_prob=0.1, exploration_decay=None):
+        # init
+        Q = np.zeros((self.n_states, self.n_actions))  # q values per (s,a)
+        N = np.zeros((self.n_states, self.n_actions))  # count visits per (s,a)
+
+        history_V_initial_state = []
+
+        for k in range(1, number_episodes+1):
+            t = 0
+            s = self.map[start]
+            last_s = -1
+            if exploration_decay:
+                exploration_prob = 1/k**exploration_decay
+            a = self.__epsilon_greedy_policy(Q[s, :], exploration_prob)
+            history_V_initial_state.append(np.max(Q[s, :]))  # V of initial state
+
+            if k % 10000 == 0:
+                print(f"Iteration ", k)
+
+            while last_s != s:
+                # observe next state and reward
+                next_s, reward = self.__step(s, a)
+                next_a = self.__epsilon_greedy_policy(Q[next_s, :], exploration_prob)
+                # update Q with sampled TD error
+                N[s, a] += 1
+                step_size = 1 / (N[s, a] ** step_size_exponent)
+                Q[s, a] += step_size * (reward + discount_factor * Q[next_s, next_a] - Q[s, a])
+
+                last_s = s
+                s = next_s
+                a = next_a
+                t += 1
+
+        # V = np.max(Q, axis=1)  # not needed
+        policy = np.argmax(Q, axis=1)
+        return Q, N, policy, history_V_initial_state
+
+    def __epsilon_greedy_policy(self, Qs, exploration_prob):
+        if np.random.rand() <= exploration_prob:
             a = random.randrange(self.n_actions)  # choose iid action
         else:
-            a = np.argmax(Q)  # choose best action
+            a = np.argmax(Qs)  # choose best action
         return a
-
-
-def dynamic_programming(env, horizon):
-    """ Solves the shortest path problem using dynamic programming
-        :input Maze env           : The maze environment in which we seek to
-                                    find the shortest path.
-        :input int horizon        : The time T up to which we solve the problem.
-        :return numpy.array V     : Optimal values for every state at every
-                                    time, dimension S*T
-        :return numpy.array policy: Optimal time-varying policy at every state,
-                                    dimension S*T
-    """
-
-    # The dynamic prgramming requires the knowledge of :
-    # - Transition probabilities
-    # - Rewards
-    # - State space
-    # - Action space
-    # - The finite horizon
-    p = env.transition_probabilities
-    r = env.rewards
-    n_states = env.n_states
-    n_actions = env.n_actions
-    T = horizon
-
-    # The variables involved in the dynamic programming backwards recursions
-    V = np.zeros((n_states, T + 1))
-    policy = np.zeros((n_states, T + 1))
-    Q = np.zeros((n_states, n_actions))
-
-    # Initialization
-    Q = np.copy(r)
-    V[:, T] = np.max(Q, 1)
-    policy[:, T] = np.argmax(Q, 1)
-
-    # The dynamic programming backwards recursion
-    for t in range(T - 1, -1, -1):
-        # Update the value function according to the bellman equation
-        for s in range(n_states):
-            for a in range(n_actions):
-                # Update of the temporary Q values
-                Q[s, a] = r[s, a] + np.dot(p[:, s, a], V[:, t + 1])
-        # Update by taking the maximum Q value w.r.t the action a
-        V[:, t] = np.max(Q, 1)
-        # The optimal action is the one that maximizes the Q function
-        policy[:, t] = np.argmax(Q, 1)
-    return V, policy
-
-
-def value_iteration(env, gamma, epsilon, max_iter=200):
-    """ Solves the shortest path problem using value iteration
-        :input Maze env           : The maze environment in which we seek to
-                                    find the shortest path.
-        :input float gamma        : The discount factor.
-        :input float epsilon      : accuracy of the value iteration procedure.
-        :return numpy.array V     : Optimal values for every state at every
-                                    time, dimension S*T
-        :return numpy.array policy: Optimal time-varying policy at every state,
-                                    dimension S*T
-    """
-    # The value itearation algorithm requires the knowledge of :
-    # - Transition probabilities
-    # - Rewards
-    # - State space
-    # - Action space
-    # - The finite horizon
-    p = env.transition_probabilities
-    r = env.rewards
-    n_states = env.n_states
-    n_actions = env.n_actions
-
-    # Required variables and temporary ones for the VI to run
-    V = np.zeros(n_states)
-    Q = np.zeros((n_states, n_actions))
-    BV = np.zeros(n_states)
-    # Iteration counter
-    n = 0
-    # Tolerance error
-    tol = (1 - gamma) * epsilon / gamma
-
-    # Initialization of the VI
-    for s in range(n_states):
-        for a in range(n_actions):
-            Q[s, a] = r[s, a] + gamma * np.dot(p[:, s, a], V)
-    BV = np.max(Q, 1)
-
-    # Iterate until convergence
-    while np.linalg.norm(V - BV, ord=np.inf) >= tol and n < max_iter:
-        # Increment by one the numbers of iteration
-        n += 1
-        # Update the value function
-        V = np.copy(BV)
-        # Compute the new BV
-        for s in range(n_states):
-            for a in range(n_actions):
-                Q[s, a] = r[s, a] + gamma * np.dot(p[:, s, a], V)
-        BV = np.max(Q, 1)
-        # Show error
-        # print(np.linalg.norm(V - BV))
-
-    print("Needed iterations: ", n, ", Final error: ", np.linalg.norm(V - BV, ord=np.inf))
-
-    # Compute policy
-    policy = np.argmax(Q, axis=1)
-    # Return the obtained policy
-    return V, policy
 
 
 def draw_maze(maze):
     # Map a color to each cell in the maze
-    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, -6: LIGHT_RED, -1: LIGHT_RED, 3:GOLD}
+    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, -6: LIGHT_RED, -1: LIGHT_RED, 3: GOLD}
 
     # Give a color to each cell
     rows, cols = maze.shape
@@ -429,7 +326,7 @@ def draw_maze(maze):
 
 def animate_solution(maze, path):
     # Map a color to each cell in the maze
-    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, -6: LIGHT_RED, -1: LIGHT_RED}
+    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, -6: LIGHT_RED, -1: LIGHT_RED, 3: GOLD}
 
     # Size of the maze
     rows, cols = maze.shape
@@ -468,8 +365,8 @@ def animate_solution(maze, path):
         grid.get_celld()[(path[i][0:2])].set_facecolor(LIGHT_ORANGE)
         grid.get_celld()[(path[i][0:2])].get_text().set_text('Player')
 
-        grid.get_celld()[(path[i][2:])].set_facecolor(LIGHT_PURPLE)
-        grid.get_celld()[(path[i][2:])].get_text().set_text('Minotaur')
+        grid.get_celld()[(path[i][2:4])].set_facecolor(LIGHT_PURPLE)
+        grid.get_celld()[(path[i][2:4])].get_text().set_text('Minotaur')
 
         if i > 0:
             if path[i] == path[i - 1]:
@@ -482,23 +379,23 @@ def animate_solution(maze, path):
                 grid.get_celld()[(path[i - 1][0:2])].set_facecolor(col_map[maze[path[i - 1][0:2]]])
                 grid.get_celld()[(path[i - 1][0:2])].get_text().set_text('')
 
-            if path[i][2:] != path[i - 1][2:]:
+            if path[i][2:4] != path[i - 1][2:4]:
                 # remove old cell coloring
-                grid.get_celld()[(path[i - 1][2:])].set_facecolor(col_map[maze[path[i - 1][2:]]])
-                grid.get_celld()[(path[i - 1][2:])].get_text().set_text('')
+                grid.get_celld()[(path[i - 1][2:4])].set_facecolor(col_map[maze[path[i - 1][2:4]]])
+                grid.get_celld()[(path[i - 1][2:4])].get_text().set_text('')
 
         display.display(fig)
         display.clear_output(wait=True)
-        time.sleep(1)
+        time.sleep(0.5)
 
 
-def visualize_policy(env, policy, minotaur_position=(5, 5)):
+def visualize_policy(env, policy, minotaur_position=(5, 5), key=0):
     maze = env.maze
     if np.ndim(policy) == 2:
         policy = policy[:, 0]
 
     # Map a color to each cell in the maze
-    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, -6: LIGHT_RED, -1: LIGHT_RED}
+    col_map = {0: WHITE, 1: BLACK, 2: LIGHT_GREEN, -6: LIGHT_RED, -1: LIGHT_RED, 3: GOLD}
 
     # Size of the maze
     rows, cols = maze.shape
@@ -534,9 +431,9 @@ def visualize_policy(env, policy, minotaur_position=(5, 5)):
     # Update the color
     for y in range(maze.shape[0]):
         for x in range(maze.shape[1]):
-            if maze[y, x] == 1:
+            if maze[y, x] == env.OBSTACLE_CELL:
                 continue
-            s = env.map[(y, x, minotaur_position[0], minotaur_position[1])]
+            s = env.map[(y, x, minotaur_position[0], minotaur_position[1], key)]
             a = policy[s]
 
             # https://unicode.org/charts/nameslist/n_2190.html
@@ -557,48 +454,3 @@ def visualize_policy(env, policy, minotaur_position=(5, 5)):
     grid.get_celld()[minotaur_position].get_text().set_text('Minotaur')
 
     plt.show()
-
-
-def visualize_probability_over_time_horizons(maze, start=(0, 0, 6, 5), runs=10000, min_H=1, max_H=30):
-    ### NO STAY
-    env = QLearningMaze(maze, minotaur_can_stay=False)
-    probabilities_for_plot_no_stay = simulate_DP_over_time_horizons(env, start, runs, max_H, min_H)
-
-    ### STAY
-    env = QLearningMaze(maze, minotaur_can_stay=True)
-    probabilities_for_plot_with_stay = simulate_DP_over_time_horizons(env, start, runs, max_H, min_H)
-
-    ### PLOT
-    plt.plot(list(range(1, max_H + 1)), probabilities_for_plot_no_stay, c="blue", label="Minotaur can't stay")
-    plt.plot(list(range(1, max_H + 1)), probabilities_for_plot_with_stay, c="red", label="Minotaur can stay")
-    plt.title("Probability of Escaping over Time Horizons")
-    plt.ylabel("Probability")
-    plt.xlabel("Time Horizon")
-    plt.legend()
-    plt.show()
-
-
-def simulate_DP_over_time_horizons(env, start=(0, 0, 6, 5), runs=10000, min_H=1, max_H=30):
-    probabilities = []
-    for h in range(min_H, max_H + 1):
-        prob = 0
-        V, policy_DP_stay = dynamic_programming(env, h)
-
-        for i in range(runs):
-            path = env.simulate_DP(start, policy_DP_stay)
-            prob += env.check_player_escaped(env.map[path[-1]])
-        prob = prob / runs
-        print(h, prob)
-        probabilities.append(prob)
-    return probabilities
-
-
-def simulate_VI_for_probability(env, gamma, epsilon, start=(0, 0, 6, 5), runs=10000):
-    prob = 0
-    V, policy_VI = value_iteration(env, gamma, epsilon)
-
-    for i in range(runs):
-        path = env.simulate_VI(start, policy_VI)
-        prob += env.check_player_escaped(env.map[path[-1]])
-    prob = prob / runs
-    return prob
