@@ -1,3 +1,6 @@
+# Kevin Armbruster (930519-T711)
+# Mohammed Akif (990123-4493)
+
 import random
 
 import numpy as np
@@ -18,7 +21,7 @@ LIGHT_ORANGE = '#FAE0C3'
 GOLD = '#FFD700'
 
 
-class QLearningMaze:
+class BonusMaze:
     # Cells
     EMPTY_CELL = 0
     OBSTACLE_CELL = 1
@@ -205,7 +208,7 @@ class QLearningMaze:
         print(self.map)
 
     def q_learning(self, start=(0, 0, 6, 5, 0), number_episodes=50000, discount_factor=49 / 50,
-                   step_size_exponent=2 / 3, exploration_prob=0.1):
+                   step_size_exponent=2 / 3, exploration_prob=0.1, exploration_decay=None):
         # init
         Q = np.ones((self.n_states, self.n_actions))  # q values per (s,a)
         N = np.zeros((self.n_states, self.n_actions))  # count visits per (s,a)
@@ -216,6 +219,8 @@ class QLearningMaze:
             t = 0
             s = self.map[start]  # reset env
             last_s = -1
+            if exploration_decay:
+                exploration_prob = 1/k**exploration_decay
             history_V_initial_state.append(np.max(Q[s, :]))  # V of initial state
 
             if k % 10000 == 0:

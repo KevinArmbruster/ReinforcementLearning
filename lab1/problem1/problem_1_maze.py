@@ -1,3 +1,6 @@
+# Kevin Armbruster (930519-T711)
+# Mohammed Akif (990123-4493)
+
 import random
 
 import numpy as np
