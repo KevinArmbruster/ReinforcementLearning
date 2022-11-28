@@ -78,31 +78,11 @@ class DQNAgent(Agent):
                                            hidden_layer_sizes=self.hidden_layer_sizes)
         self.target_dqn_network = DQNNetwork(n_states=n_states, n_actions=n_actions,
                                              hidden_layer_sizes=self.hidden_layer_sizes)  # ide errors if not done initially
-        self.update_target_network()
-
-    def exploration_rate(self, N, k):
-        # N = Episodes, k = current episode
-        Z = round(N * self.exploration_rate_percentage)
-        tmp = self.exploration_rate_max * (self.exploration_rate_min / self.exploration_rate_max) ** ((k - 1) / (Z - 1))
-        return max(self.exploration_rate_min, tmp)
-
-    def update_target_network(self):
-        # alternative might be to copy only weights??
-        # https://androidkt.com/copy-pytorch-model-using-deepcopy-and-state_dict/
-        self.target_dqn_network = deepcopy(self.main_dqn_network)
-        self.target_dqn_network.setup_optimizer()  # else old reference is in place
+        self.__update_target_network()
 
     def forward(self, state: np.ndarray, N, k):
-        self.last_action = self.e_greedy_policy(state, N, k)
+        self.last_action = self.__e_greedy_policy(state, N, k)
         return self.last_action
-
-    def e_greedy_policy(self, state, N, k):
-        if np.random.rand() <= self.exploration_rate(N, k):
-            action = random.randrange(self.n_actions)  # choose iid action
-        else:
-            action = self.main_dqn_network.forward(state)
-            action = torch.argmax(action).item()
-        return action
 
     def backward(self):
         try:
@@ -121,7 +101,27 @@ class DQNAgent(Agent):
             # update target nn
             self.current_iteration += 1
             if self.current_iteration >= self.target_nn_update_frequency:
-                self.update_target_network()
+                self.__update_target_network()
 
         except IndexError as e:
             print("Could not train yet: ", e)
+
+    def __e_greedy_policy(self, state, N, k):
+        if np.random.rand() <= self.__exploration_rate(N, k):
+            action = random.randrange(self.n_actions)  # choose iid action
+        else:
+            action = self.main_dqn_network.forward(state)
+            action = torch.argmax(action).item()
+        return action
+
+    def __exploration_rate(self, N, k):
+        # N = Episodes, k = current episode
+        Z = round(N * self.exploration_rate_percentage)
+        tmp = self.exploration_rate_max * (self.exploration_rate_min / self.exploration_rate_max) ** ((k - 1) / (Z - 1))
+        return max(self.exploration_rate_min, tmp)
+
+    def __update_target_network(self):
+        # alternative might be to copy only weights??
+        # https://androidkt.com/copy-pytorch-model-using-deepcopy-and-state_dict/
+        self.target_dqn_network = deepcopy(self.main_dqn_network)
+        self.target_dqn_network.setup_optimizer()  # else old reference is in place
