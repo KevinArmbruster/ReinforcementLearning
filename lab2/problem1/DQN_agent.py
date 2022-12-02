@@ -15,8 +15,8 @@
 
 # Load packages
 import random
-import numpy as np
 from copy import deepcopy
+from torchinfo import summary
 from lab2.problem1.Helper import *
 
 
@@ -57,7 +57,7 @@ class DQNAgent(Agent):
     ''' Agent taking actions uniformly at random, child of the class Agent'''
 
     def __init__(self, n_actions: int, n_states: int, buffer_size: int, discount_factor: float,
-                 batch_size: int = 4):
+                 batch_size: int, hidden_layer_sizes: list, lr: float, **kwargs):
         super(DQNAgent, self).__init__(n_actions)
         self.n_states = n_states
 
@@ -65,7 +65,7 @@ class DQNAgent(Agent):
         self.discount_factor = discount_factor
         self.exploration_rate_min = 0.05
         self.exploration_rate_max = 0.99
-        self.exploration_rate_percentage = 0.9
+        self.exploration_rate_percentage = 0.95  # advised range [0.9, 0.95]
 
         ## NN
         self.batch_size = batch_size
@@ -73,11 +73,13 @@ class DQNAgent(Agent):
         self.buffer = ExperienceReplayBuffer(maximum_length=buffer_size)
         self.current_iteration = 0
         self.target_nn_update_frequency = int(buffer_size / batch_size)
-        self.hidden_layer_sizes = [8, 8]  # advised 1-2 layers with 8-128 neurons
-        self.main_dqn_network = DQNNetwork(n_states=n_states, n_actions=n_actions,
-                                           hidden_layer_sizes=self.hidden_layer_sizes)
-        self.target_dqn_network = DQNNetwork(n_states=n_states, n_actions=n_actions,
-                                             hidden_layer_sizes=self.hidden_layer_sizes)  # ide errors if not done initially
+        self.hidden_layer_sizes = hidden_layer_sizes
+        self.lr = lr
+        self.main_q_network = StateActionValueNetwork(n_states=n_states, n_actions=n_actions,
+                                                      hidden_layer_sizes=self.hidden_layer_sizes, lr=lr)
+        summary(self.main_q_network)
+        self.target_q_network = StateActionValueNetwork(n_states=n_states, n_actions=n_actions,
+                                                        hidden_layer_sizes=self.hidden_layer_sizes, lr=lr)  # ide errors if not done initially
         self.__update_target_network()
 
     def forward(self, state: np.ndarray, N, k):
@@ -85,43 +87,53 @@ class DQNAgent(Agent):
         return self.last_action
 
     def backward(self):
-        try:
-            batch = self.buffer.sample_batch(self.batch_size)
-            states, actions, rewards, next_states, dones = batch
-            states = np.array(states)
+        batch = self.buffer.sample_batch(self.batch_size)
+        states, actions, rewards, next_states, dones = batch
+        states = np.array(states)
+        next_states = np.array(next_states)
+        dones = torch.tensor(np.invert(dones), dtype=torch.float32)  # invert dones
+        rewards = torch.tensor(rewards, dtype=torch.float32)
 
-            # calc targets
-            Q_target = self.target_dqn_network.forward(states)
-            targets = rewards + self.discount_factor * dones[:, None] * Q_target
+        # calc targets for td error
+        next_Q = self.target_q_network.forward(next_states)
+        max_next_Q, _ = torch.max(next_Q, dim=1)
+        targets = rewards + self.discount_factor * dones * max_next_Q
 
-            # update main nn
-            targets = np.array(targets)
-            self.main_dqn_network.backward(targets, states)
+        # update main nn
+        self.main_q_network.backward(targets, states)
 
-            # update target nn
-            self.current_iteration += 1
-            if self.current_iteration >= self.target_nn_update_frequency:
-                self.__update_target_network()
+        # update target nn
+        self.current_iteration += 1
+        if self.current_iteration >= self.target_nn_update_frequency:
+            self.__update_target_network()
+            self.current_iteration = 0
 
-        except IndexError as e:
-            print("Could not train yet: ", e)
 
     def __e_greedy_policy(self, state, N, k):
-        if np.random.rand() <= self.__exploration_rate(N, k):
+        exploration_rate = self.__exponential_decay_exploration_rate(N, k)
+        # exploration_rate = self.__linear_decay_exploration_rate(N, k)
+
+        if np.random.rand() <= exploration_rate:
             action = random.randrange(self.n_actions)  # choose iid action
         else:
-            action = self.main_dqn_network.forward(state)
+            action = self.main_q_network.forward(state)
             action = torch.argmax(action).item()
         return action
 
-    def __exploration_rate(self, N, k):
+    def __exponential_decay_exploration_rate(self, N, k):
         # N = Episodes, k = current episode
         Z = round(N * self.exploration_rate_percentage)
         tmp = self.exploration_rate_max * (self.exploration_rate_min / self.exploration_rate_max) ** ((k - 1) / (Z - 1))
         return max(self.exploration_rate_min, tmp)
 
+    def __linear_decay_exploration_rate(self, N, k):
+        # N = Episodes, k = current episode
+        Z = round(N * self.exploration_rate_percentage)
+        tmp = self.exploration_rate_max - ((self.exploration_rate_max - self.exploration_rate_min) * (k - 1) / (Z - 1))
+        return max(self.exploration_rate_min, tmp)
+
     def __update_target_network(self):
         # alternative might be to copy only weights??
         # https://androidkt.com/copy-pytorch-model-using-deepcopy-and-state_dict/
-        self.target_dqn_network = deepcopy(self.main_dqn_network)
-        self.target_dqn_network.setup_optimizer()  # else old reference is in place
+        self.target_q_network = deepcopy(self.main_q_network)
+        self.target_q_network.setup_optimizer()  # detaches optimizer from original

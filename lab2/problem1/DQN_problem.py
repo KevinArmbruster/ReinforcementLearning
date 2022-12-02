@@ -12,15 +12,14 @@
 # Code author: [Alessio Russo - alessior@kth.se]
 # Last update: 6th October 2020, by alessior@kth.se
 #
+import itertools
 
 # Load packages
-import numpy as np
 import gym
-import torch
 import matplotlib.pyplot as plt
 from tqdm import trange
 from DQN_agent import *
-from lab2.problem1.Helper import Experience, ExperienceReplayBuffer, DQNNetwork
+from lab2.problem1.Helper import Experience
 
 
 def running_average(x, N):
@@ -35,7 +34,7 @@ def running_average(x, N):
     return y
 
 
-def simulate(N_episodes, agent, buffer):
+def simulate(N_episodes, agent: Agent, buffer):
     # We will use these variables to compute the average episodic reward and
     # the average number of steps per episode
     episode_reward_list = []  # this list contains the total reward per episode
@@ -80,6 +79,11 @@ def simulate(N_episodes, agent, buffer):
         # Close environment
         env.close()
 
+        # early stopping, if agent performs well
+        if running_average(episode_reward_list, n_ep_running_average)[-1] > 50:
+            print("Early Stopping, Agent performs well")
+            break
+
         # Updates the tqdm update bar with fresh information
         # (episode number, total reward of the last episode, total number of Steps
         # of the last episode, average reward, average number of steps)
@@ -92,7 +96,7 @@ def simulate(N_episodes, agent, buffer):
     return episode_reward_list, episode_number_of_steps
 
 
-def plot_rewards_and_steps(N_episodes, episode_reward_list, episode_number_of_steps):
+def plot_rewards_and_steps(N_episodes, episode_reward_list, episode_number_of_steps, title=""):
     # Plot Rewards and steps
     fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(16, 9))
     ax[0].plot([i for i in range(1, N_episodes + 1)], episode_reward_list, label='Episode reward')
@@ -111,7 +115,37 @@ def plot_rewards_and_steps(N_episodes, episode_reward_list, episode_number_of_st
     ax[1].set_title('Total number of steps vs Episodes')
     ax[1].legend()
     ax[1].grid(alpha=0.3)
+    plt.title(title)
     plt.show()
+
+
+def product_dict(**kwargs):
+    keys = kwargs.keys()
+    vals = kwargs.values()
+    for instance in itertools.product(*vals):
+        yield dict(zip(keys, instance))
+
+
+def hyper_parameter_search(hs_config, random_agent, n_ep_running_average):
+    search_space = list(product_dict(**hs_config))
+    print("Searching possibilities: ", len(search_space))
+
+    results = []
+    SEARCH = trange(len(search_space), desc='Episode: ', leave=True)
+    for i in SEARCH:
+        hs_dqn_agent = DQNAgent(**search_space[i])
+        simulate(int(search_space[i]["buffer_size"] / 80 * rough_fill_percentage), random_agent, hs_dqn_agent.buffer)
+        episode_reward_list, episode_number_of_steps = simulate(search_space[i]["N_episodes"], hs_dqn_agent,
+                                                                hs_dqn_agent.buffer)
+        avg_reward = running_average(episode_reward_list, n_ep_running_average)[-1]
+        avg_steps = running_average(episode_number_of_steps, n_ep_running_average)[-1]
+        results.append(avg_reward)
+        SEARCH.set_description(f"SEARCH {i} - Avg Reward/Steps: {avg_reward}/{avg_steps}")
+
+    idx = np.argmax(results)
+    best_hp = search_space[idx]
+    print(idx, np.max(results), best_hp)
+    return idx, results, search_space
 
 
 # Import and initialize the discrete Lunar Lander Environment
@@ -119,23 +153,46 @@ env = gym.make('LunarLander-v2')
 env.reset()
 
 ### Parameters
-N_episodes = 100  # advised range [100, 1000]
-discount_factor = 49 / 50
 n_ep_running_average = 50
-n_actions = env.action_space.n  # Number of available actions
-n_states = len(env.observation_space.high)  # State dimensionality
-buffer_size = 5000  # advised range [5000, 30000]
-batch_size = 4  # advised range [4, 128]
+
+agent_config = {
+    "N_episodes": 1000,  # advised range [100, 1000]
+    "discount_factor": 999 / 1000,
+    "lr": 0.00055,  # 1e-3,  # advised range [1e-3, 1e-4]
+    "n_actions": env.action_space.n,
+    "n_states": len(env.observation_space.high),
+    "buffer_size": 10000,  # advised range [5000, 30000]
+    "batch_size": 16,  # advised range [4, 128]
+    "hidden_layer_sizes": [32, 32]  # advised 1-2 layers with 8-128 neurons
+}
 
 ### Initialization
-random_agent = RandomAgent(n_actions)
-dqn_agent = DQNAgent(n_actions=n_actions, n_states=n_states, buffer_size=buffer_size, discount_factor=discount_factor,
-                     batch_size=batch_size)
+random_agent = RandomAgent(agent_config["n_actions"])
+dqn_agent = DQNAgent(**agent_config)
 # fill experience buffer
-simulate(int(buffer_size / 50), random_agent, dqn_agent.buffer)
+rough_fill_percentage = 0.1
+simulate(int(agent_config["buffer_size"] / 80 * rough_fill_percentage), random_agent, dqn_agent.buffer)
 print("Buffer size = ", dqn_agent.buffer.__len__())
 
-### Training process
-episode_reward_list, episode_number_of_steps = simulate(N_episodes, dqn_agent, dqn_agent.buffer)
+### Hyperparameter Search
+hs_config = {
+    "N_episodes": [1000],  # np.linspace(100, 500, 3),
+    "discount_factor": [99 / 100, 499 / 500, 999 / 1000],
+    "n_actions": [env.action_space.n],
+    "n_states": [len(env.observation_space.high)],
+    "buffer_size": [10000],  # np.linspace(5000, 30000, 3).astype(int),
+    "batch_size": [16, 32, 64],  # np.linspace(16, 128, 3).astype(int),
+    "lr": np.linspace(1e-3, 1e-4, 3),
+    "hidden_layer_sizes": [[32, 32]],
+}
+#idx, results, search_space = hyper_parameter_search(hs_config, random_agent, n_ep_running_average)
 
-plot_rewards_and_steps(N_episodes, episode_reward_list, episode_number_of_steps)
+### Training process
+episode_reward_list, episode_number_of_steps = simulate(agent_config["N_episodes"], dqn_agent, dqn_agent.buffer)
+
+plot_rewards_and_steps(agent_config["N_episodes"], episode_reward_list, episode_number_of_steps, agent_config)
+
+print(agent_config)
+
+### Save DQN
+torch.save(dqn_agent.main_q_network, "neural-network-1.pth")

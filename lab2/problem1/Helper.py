@@ -5,18 +5,18 @@ import torch
 import torch.nn as nn
 
 
-class DQNNetwork(nn.Module):
+class StateActionValueNetwork(nn.Module):
 
-    def __init__(self, n_states: int, n_actions: int, hidden_layer_sizes: list, lr=1e-3):
-        super(DQNNetwork, self).__init__()
+    def __init__(self, n_states: int, n_actions: int, hidden_layer_sizes: list, lr: float):
+        super(StateActionValueNetwork, self).__init__()
         self.n_states = n_states
         self.n_actions = n_actions
         self.hidden_layer_sizes = hidden_layer_sizes
         self.layers = None
         self.activation_functions = None
         self.optimizer = None
-        self.lr = lr  # advised range [1e-3, 1e-4]
-        self.max_grad_norm = 1.  # advised range [0.5, 2]
+        self.lr = lr
+        self.max_grad_norm = 1  # advised range [0.5, 2]
 
         self.setup_NN(n_states, hidden_layer_sizes, n_actions)
         self.setup_optimizer()
@@ -45,8 +45,7 @@ class DQNNetwork(nn.Module):
 
     def forward(self, state: np.ndarray):
         # state_tensor = torch.tensor([state], requires_grad=False, dtype=torch.float32)
-        state_tensor = torch.from_numpy(state)
-        # state_tensor = torch.tensor(state_tensor, requires_grad=True)
+        state_tensor = torch.from_numpy(state)  # .requires_grad_(True)
 
         for layer, af in zip(self.layers, self.activation_functions):
             if af:
@@ -63,6 +62,7 @@ class DQNNetwork(nn.Module):
 
         # Compute output of the network given the states batch
         pred = self.forward(states)
+        pred, _ = torch.max(pred, dim=1)
 
         # Compute loss function
         loss = nn.functional.mse_loss(pred, targets)
@@ -76,6 +76,8 @@ class DQNNetwork(nn.Module):
         # Perform backward pass (backpropagation)
         self.optimizer.step()
 
+        return (loss / len(states)).detach().numpy()
+
 
 Experience = namedtuple('Experience', ['state', 'action', 'reward', 'next_state', 'done'])
 
@@ -83,7 +85,7 @@ Experience = namedtuple('Experience', ['state', 'action', 'reward', 'next_state'
 class ExperienceReplayBuffer(object):
 
     def __init__(self, maximum_length):
-        self.buffer = deque(maxlen=maximum_length)
+        self.buffer = deque(maxlen=int(maximum_length))
 
     def append(self, experience):
         self.buffer.append(experience)
@@ -91,13 +93,19 @@ class ExperienceReplayBuffer(object):
     def __len__(self):
         return len(self.buffer)
 
-    def sample_batch(self, n):
+    def sample_batch(self, n, combined=True):
+        n = int(n)
         if n > len(self.buffer):
             raise IndexError('Tried to sample too many elements from the buffer!')
 
-        indices = np.random.choice(len(self.buffer), size=n, replace=False)
-
-        batch = [self.buffer[i] for i in indices]
+        if combined:
+            n -= 1  # fetch 1 less
+            indices = np.random.choice(len(self.buffer) - 1, size=n, replace=False)  # consider only rest of experiences
+            batch = [self.buffer[i] for i in indices]
+            batch.append(self.buffer[-1])  # append newest experience
+        else:
+            indices = np.random.choice(len(self.buffer), size=n, replace=False)
+            batch = [self.buffer[i] for i in indices]
 
         # convert a list of tuples into a tuple of list we do zip(*batch)
         return zip(*batch)
