@@ -56,16 +56,12 @@ class StateActionValueNetwork(nn.Module):
 
         return state_tensor
 
-    def backward(self, targets, states):
+    def backward(self, current, targets):
         # Training process, set gradients to 0
         self.optimizer.zero_grad()
 
-        # Compute output of the network given the states batch
-        pred = self.forward(states)
-        pred, _ = torch.max(pred, dim=1)
-
         # Compute loss function
-        loss = nn.functional.mse_loss(pred, targets)
+        loss = nn.functional.mse_loss(current, targets)
 
         # Compute gradient
         loss.backward()
@@ -76,7 +72,7 @@ class StateActionValueNetwork(nn.Module):
         # Perform backward pass (backpropagation)
         self.optimizer.step()
 
-        return (loss / len(states)).detach().numpy()
+        return (loss / len(current)).detach().numpy()
 
 
 Experience = namedtuple('Experience', ['state', 'action', 'reward', 'next_state', 'done'])

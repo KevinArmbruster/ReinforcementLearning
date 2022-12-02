@@ -80,7 +80,8 @@ def simulate(N_episodes, agent: Agent, buffer):
         env.close()
 
         # early stopping, if agent performs well
-        if running_average(episode_reward_list, n_ep_running_average)[-1] > 50:
+        ravg = running_average(episode_reward_list, n_ep_running_average)[-1]
+        if ravg > 200:
             print("Early Stopping, Agent performs well")
             break
 
@@ -96,26 +97,27 @@ def simulate(N_episodes, agent: Agent, buffer):
     return episode_reward_list, episode_number_of_steps
 
 
-def plot_rewards_and_steps(N_episodes, episode_reward_list, episode_number_of_steps, title=""):
+def plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, title=""):
+    episodes = len(episode_reward_list)
     # Plot Rewards and steps
     fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(16, 9))
-    ax[0].plot([i for i in range(1, N_episodes + 1)], episode_reward_list, label='Episode reward')
-    ax[0].plot([i for i in range(1, N_episodes + 1)], running_average(
+    ax[0].plot([i for i in range(1, episodes + 1)], episode_reward_list, label='Episode reward')
+    ax[0].plot([i for i in range(1, episodes + 1)], running_average(
         episode_reward_list, n_ep_running_average), label='Avg. episode reward')
     ax[0].set_xlabel('Episodes')
     ax[0].set_ylabel('Total reward')
     ax[0].set_title('Total Reward vs Episodes')
     ax[0].legend()
     ax[0].grid(alpha=0.3)
-    ax[1].plot([i for i in range(1, N_episodes + 1)], episode_number_of_steps, label='Steps per episode')
-    ax[1].plot([i for i in range(1, N_episodes + 1)], running_average(
+    ax[1].plot([i for i in range(1, episodes + 1)], episode_number_of_steps, label='Steps per episode')
+    ax[1].plot([i for i in range(1, episodes + 1)], running_average(
         episode_number_of_steps, n_ep_running_average), label='Avg. number of steps per episode')
     ax[1].set_xlabel('Episodes')
     ax[1].set_ylabel('Total number of steps')
     ax[1].set_title('Total number of steps vs Episodes')
     ax[1].legend()
     ax[1].grid(alpha=0.3)
-    plt.title(title)
+    fig.suptitle(title)
     plt.show()
 
 
@@ -157,7 +159,7 @@ n_ep_running_average = 50
 
 agent_config = {
     "N_episodes": 1000,  # advised range [100, 1000]
-    "discount_factor": 999 / 1000,
+    "discount_factor": 99 / 100,
     "lr": 0.00055,  # 1e-3,  # advised range [1e-3, 1e-4]
     "n_actions": env.action_space.n,
     "n_states": len(env.observation_space.high),
@@ -190,7 +192,7 @@ hs_config = {
 ### Training process
 episode_reward_list, episode_number_of_steps = simulate(agent_config["N_episodes"], dqn_agent, dqn_agent.buffer)
 
-plot_rewards_and_steps(agent_config["N_episodes"], episode_reward_list, episode_number_of_steps, agent_config)
+plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, agent_config)
 
 print(agent_config)
 

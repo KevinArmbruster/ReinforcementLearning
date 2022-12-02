@@ -94,19 +94,28 @@ class DQNAgent(Agent):
         dones = torch.tensor(np.invert(dones), dtype=torch.float32)  # invert dones
         rewards = torch.tensor(rewards, dtype=torch.float32)
 
-        # calc targets for td error
-        next_Q = self.target_q_network.forward(next_states)
+        # Targets for TD error
+        next_Q = self.target_q_network(next_states)
         max_next_Q, _ = torch.max(next_Q, dim=1)
         targets = rewards + self.discount_factor * dones * max_next_Q
+        assert(targets.shape == (self.batch_size,))
 
-        # update main nn
-        self.main_q_network.backward(targets, states)
+        # current Q value of selected actions
+        current_Q = self.main_q_network(states)
+        batch_indices = list(range(self.batch_size))
+        selected_Qs = current_Q[batch_indices, actions]
+        assert(selected_Qs.shape == (self.batch_size,))
+
+        # update main nn with TD error
+        loss = self.main_q_network.backward(selected_Qs, targets)
 
         # update target nn
         self.current_iteration += 1
         if self.current_iteration >= self.target_nn_update_frequency:
             self.__update_target_network()
             self.current_iteration = 0
+
+        return loss
 
 
     def __e_greedy_policy(self, state, N, k):
