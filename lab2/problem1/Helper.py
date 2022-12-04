@@ -44,18 +44,18 @@ class StateActionValueNetwork(nn.Module):
     def setup_optimizer(self):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
 
-    def forward(self, state: np.ndarray):
-        # state_tensor = torch.tensor([state], requires_grad=False, dtype=torch.float32)
-        state_tensor = torch.from_numpy(state)  # .requires_grad_(True)
+    def forward(self, state: torch.Tensor):
+        # out = torch.from_numpy(state)
+        out = state
 
         for layer, af in zip(self.layers, self.activation_functions):
             if af:
-                state_tensor = layer(state_tensor)
-                state_tensor = af(state_tensor)
+                out = layer(out)
+                out = af(out)
             else:
-                state_tensor = layer(state_tensor)
+                out = layer(out)
 
-        return state_tensor
+        return out
 
     def backward(self, current, targets):
         # Training process, set gradients to 0

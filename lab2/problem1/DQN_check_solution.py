@@ -59,6 +59,8 @@ for i in EPISODES:
     state = env.reset()
     total_episode_reward = 0.
     while not done:
+        # env.render()
+
         # Get next state and reward.  The done variable
         # will be True if you reached the goal position,
         # False otherwise

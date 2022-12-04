@@ -125,7 +125,7 @@ class DQNAgent(Agent):
         if np.random.rand() <= exploration_rate:
             action = random.randrange(self.n_actions)  # choose iid action
         else:
-            action = self.main_q_network.forward(state)
+            action = self.main_q_network.forward(torch.from_numpy(state))
             action = torch.argmax(action).item()
         return action
 
