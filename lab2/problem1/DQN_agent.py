@@ -15,9 +15,11 @@
 
 # Load packages
 import random
+import torch
+import numpy as np
 from copy import deepcopy
 from torchinfo import summary
-from lab2.problem1.Helper import *
+from lab2.problem1.Helper import ExperienceReplayBuffer, StateActionValueNetwork
 
 
 class Agent(object):
@@ -79,7 +81,8 @@ class DQNAgent(Agent):
                                                       hidden_layer_sizes=self.hidden_layer_sizes, lr=lr)
         summary(self.main_q_network)
         self.target_q_network = StateActionValueNetwork(n_states=n_states, n_actions=n_actions,
-                                                        hidden_layer_sizes=self.hidden_layer_sizes, lr=lr)  # ide errors if not done initially
+                                                        hidden_layer_sizes=self.hidden_layer_sizes,
+                                                        lr=lr)  # ide errors if not done initially
         self.__update_target_network()
 
     def forward(self, state: np.ndarray, N, k):
@@ -98,13 +101,13 @@ class DQNAgent(Agent):
         next_Q = self.target_q_network(next_states)
         max_next_Q, _ = torch.max(next_Q, dim=1)
         targets = rewards + self.discount_factor * dones * max_next_Q
-        assert(targets.shape == (self.batch_size,))
+        assert (targets.shape == (self.batch_size,))
 
         # current Q value of selected actions
         current_Q = self.main_q_network(states)
         batch_indices = list(range(self.batch_size))
         selected_Qs = current_Q[batch_indices, actions]
-        assert(selected_Qs.shape == (self.batch_size,))
+        assert (selected_Qs.shape == (self.batch_size,))
 
         # update main nn with TD error
         loss = self.main_q_network.backward(selected_Qs, targets)
@@ -116,7 +119,6 @@ class DQNAgent(Agent):
             self.current_iteration = 0
 
         return loss
-
 
     def __e_greedy_policy(self, state, N, k):
         exploration_rate = self.__exponential_decay_exploration_rate(N, k)

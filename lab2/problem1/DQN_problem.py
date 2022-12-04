@@ -15,10 +15,11 @@
 import itertools
 
 # Load packages
+import numpy as np
 import gym
 import matplotlib.pyplot as plt
 from tqdm import trange
-from DQN_agent import *
+from DQN_agent import Agent, RandomAgent, DQNAgent
 from lab2.problem1.Helper import Experience
 
 
@@ -176,7 +177,8 @@ random_agent = RandomAgent(agent_config["n_actions"])
 dqn_agent = DQNAgent(**agent_config)
 # fill experience buffer
 rough_fill_percentage = .1
-episode_reward_list, episode_number_of_steps = simulate(int(agent_config["buffer_size"] / 80 * rough_fill_percentage), random_agent, dqn_agent.buffer)
+episode_reward_list, episode_number_of_steps = simulate(int(agent_config["buffer_size"] / 80 * rough_fill_percentage),
+                                                        random_agent, dqn_agent.buffer)
 plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, "Random Agent")
 print("Buffer size = ", dqn_agent.buffer.__len__())
 
