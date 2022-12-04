@@ -7,7 +7,7 @@ import torch.nn as nn
 
 class StateActionValueNetwork(nn.Module):
 
-    def __init__(self, n_states: int, n_actions: int, hidden_layer_sizes: list, lr: float):
+    def __init__(self, n_states: int, n_actions: int, hidden_layer_sizes: list, lr: float, weight_decay: float = 0):
         super(StateActionValueNetwork, self).__init__()
         self.n_states = n_states
         self.n_actions = n_actions
@@ -17,6 +17,7 @@ class StateActionValueNetwork(nn.Module):
         self.optimizer = None
         self.lr = lr
         self.max_grad_norm = 1  # advised range [0.5, 2]
+        self.weight_decay = weight_decay
 
         self.setup_NN(n_states, hidden_layer_sizes, n_actions)
         self.setup_optimizer()
@@ -41,7 +42,7 @@ class StateActionValueNetwork(nn.Module):
         self.activation_functions = activation_functions
 
     def setup_optimizer(self):
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
 
     def forward(self, state: np.ndarray):
         # state_tensor = torch.tensor([state], requires_grad=False, dtype=torch.float32)

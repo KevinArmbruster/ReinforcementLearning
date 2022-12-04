@@ -81,7 +81,7 @@ def simulate(N_episodes, agent: Agent, buffer):
 
         # early stopping, if agent performs well
         ravg = running_average(episode_reward_list, n_ep_running_average)[-1]
-        if ravg > 200:
+        if ravg > 230:
             print("Early Stopping, Agent performs well")
             break
 
@@ -133,8 +133,10 @@ def hyper_parameter_search(hs_config, random_agent, n_ep_running_average):
     print("Searching possibilities: ", len(search_space))
 
     results = []
+    results1 = []
     SEARCH = trange(len(search_space), desc='Episode: ', leave=True)
     for i in SEARCH:
+        print(search_space[i])
         hs_dqn_agent = DQNAgent(**search_space[i])
         simulate(int(search_space[i]["buffer_size"] / 80 * rough_fill_percentage), random_agent, hs_dqn_agent.buffer)
         episode_reward_list, episode_number_of_steps = simulate(search_space[i]["N_episodes"], hs_dqn_agent,
@@ -142,12 +144,13 @@ def hyper_parameter_search(hs_config, random_agent, n_ep_running_average):
         avg_reward = running_average(episode_reward_list, n_ep_running_average)[-1]
         avg_steps = running_average(episode_number_of_steps, n_ep_running_average)[-1]
         results.append(avg_reward)
+        results1.append(avg_steps)
         SEARCH.set_description(f"SEARCH {i} - Avg Reward/Steps: {avg_reward}/{avg_steps}")
 
     idx = np.argmax(results)
     best_hp = search_space[idx]
     print(idx, np.max(results), best_hp)
-    return idx, results, search_space
+    return idx, results, results1, search_space
 
 
 # Import and initialize the discrete Lunar Lander Environment
@@ -164,37 +167,69 @@ agent_config = {
     "n_actions": env.action_space.n,
     "n_states": len(env.observation_space.high),
     "buffer_size": 10000,  # advised range [5000, 30000]
-    "batch_size": 16,  # advised range [4, 128]
-    "hidden_layer_sizes": [32, 32]  # advised 1-2 layers with 8-128 neurons
+    "batch_size": 32,  # advised range [4, 128]
+    "hidden_layer_sizes": [64, 64]  # advised 1-2 layers with 8-128 neurons
 }
 
 ### Initialization
 random_agent = RandomAgent(agent_config["n_actions"])
 dqn_agent = DQNAgent(**agent_config)
 # fill experience buffer
-rough_fill_percentage = 0.1
-simulate(int(agent_config["buffer_size"] / 80 * rough_fill_percentage), random_agent, dqn_agent.buffer)
+rough_fill_percentage = .1
+episode_reward_list, episode_number_of_steps = simulate(int(agent_config["buffer_size"] / 80 * rough_fill_percentage), random_agent, dqn_agent.buffer)
+plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, "Random Agent")
 print("Buffer size = ", dqn_agent.buffer.__len__())
 
 ### Hyperparameter Search
 hs_config = {
     "N_episodes": [1000],  # np.linspace(100, 500, 3),
-    "discount_factor": [99 / 100, 499 / 500, 999 / 1000],
+    "discount_factor": [49 / 50, 99 / 100, 499 / 500],
     "n_actions": [env.action_space.n],
     "n_states": [len(env.observation_space.high)],
     "buffer_size": [10000],  # np.linspace(5000, 30000, 3).astype(int),
     "batch_size": [16, 32, 64],  # np.linspace(16, 128, 3).astype(int),
     "lr": np.linspace(1e-3, 1e-4, 3),
-    "hidden_layer_sizes": [[32, 32]],
+    "hidden_layer_sizes": [[64, 64], [128], ],
 }
-#idx, results, search_space = hyper_parameter_search(hs_config, random_agent, n_ep_running_average)
+# idx, results, results1, search_space = hyper_parameter_search(hs_config, random_agent, n_ep_running_average)
 
 ### Training process
-episode_reward_list, episode_number_of_steps = simulate(agent_config["N_episodes"], dqn_agent, dqn_agent.buffer)
-
-plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, agent_config)
-
 print(agent_config)
+episode_reward_list, episode_number_of_steps = simulate(agent_config["N_episodes"], dqn_agent, dqn_agent.buffer)
+plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, "DQN Agent")
 
 ### Save DQN
 torch.save(dqn_agent.main_q_network, "neural-network-1.pth")
+
+### e)
+agent_config1 = {
+    "N_episodes": 1000,  # advised range [100, 1000]
+    "discount_factor": 1,
+    "lr": 0.00055,  # 1e-3,  # advised range [1e-3, 1e-4]
+    "n_actions": env.action_space.n,
+    "n_states": len(env.observation_space.high),
+    "buffer_size": 10000,  # advised range [5000, 30000]
+    "batch_size": 32,  # advised range [4, 128]
+    "hidden_layer_sizes": [64, 64]  # advised 1-2 layers with 8-128 neurons
+}
+dqn_agent1 = DQNAgent(**agent_config1)
+# fill experience buffer
+simulate(int(agent_config1["buffer_size"] / 80 * rough_fill_percentage), random_agent, dqn_agent1.buffer)
+episode_reward_list, episode_number_of_steps = simulate(agent_config1["N_episodes"], dqn_agent1, dqn_agent1.buffer)
+plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, "DQN Agent - discount_factor = 1")
+
+agent_config2 = {
+    "N_episodes": 1000,  # advised range [100, 1000]
+    "discount_factor": 1 / 10,
+    "lr": 0.00055,  # 1e-3,  # advised range [1e-3, 1e-4]
+    "n_actions": env.action_space.n,
+    "n_states": len(env.observation_space.high),
+    "buffer_size": 10000,  # advised range [5000, 30000]
+    "batch_size": 32,  # advised range [4, 128]
+    "hidden_layer_sizes": [64, 64]  # advised 1-2 layers with 8-128 neurons
+}
+dqn_agent2 = DQNAgent(**agent_config2)
+# fill experience buffer
+simulate(int(agent_config2["buffer_size"] / 80 * rough_fill_percentage), random_agent, dqn_agent2.buffer)
+episode_reward_list, episode_number_of_steps = simulate(agent_config1["N_episodes"], dqn_agent2, dqn_agent2.buffer)
+plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, "DQN Agent - discount_factor = 1/10")
