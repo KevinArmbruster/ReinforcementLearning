@@ -15,6 +15,7 @@
 import itertools
 
 # Load packages
+import torch
 import numpy as np
 import gym
 import matplotlib.pyplot as plt
@@ -35,7 +36,7 @@ def running_average(x, N):
     return y
 
 
-def simulate(N_episodes, agent: Agent, buffer):
+def simulate(N_episodes, agent: Agent, buffer, early_stopping=230):
     # We will use these variables to compute the average episodic reward and
     # the average number of steps per episode
     episode_reward_list = []  # this list contains the total reward per episode
@@ -82,7 +83,7 @@ def simulate(N_episodes, agent: Agent, buffer):
 
         # early stopping, if agent performs well
         ravg = running_average(episode_reward_list, n_ep_running_average)[-1]
-        if ravg > 230:
+        if early_stopping and ravg > early_stopping:
             print("Early Stopping, Agent performs well")
             break
 
@@ -179,7 +180,7 @@ dqn_agent = DQNAgent(**agent_config)
 rough_fill_percentage = .1
 episode_reward_list, episode_number_of_steps = simulate(int(agent_config["buffer_size"] / 80 * rough_fill_percentage),
                                                         random_agent, dqn_agent.buffer)
-plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, "Random Agent")
+# plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, "Random Agent")
 print("Buffer size = ", dqn_agent.buffer.__len__())
 
 ### Hyperparameter Search
@@ -201,11 +202,11 @@ episode_reward_list, episode_number_of_steps = simulate(agent_config["N_episodes
 plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, "DQN Agent")
 
 ### Save DQN
-torch.save(dqn_agent.main_q_network, "neural-network-1.pth")
+# torch.save(dqn_agent.main_q_network, "neural-network-1.pth")
 
 ### e)
 agent_config1 = {
-    "N_episodes": 1000,  # advised range [100, 1000]
+    "N_episodes": 400,  # advised range [100, 1000]
     "discount_factor": 1,
     "lr": 0.00055,  # 1e-3,  # advised range [1e-3, 1e-4]
     "n_actions": env.action_space.n,
@@ -217,11 +218,11 @@ agent_config1 = {
 dqn_agent1 = DQNAgent(**agent_config1)
 # fill experience buffer
 simulate(int(agent_config1["buffer_size"] / 80 * rough_fill_percentage), random_agent, dqn_agent1.buffer)
-episode_reward_list, episode_number_of_steps = simulate(agent_config1["N_episodes"], dqn_agent1, dqn_agent1.buffer)
+episode_reward_list, episode_number_of_steps = simulate(agent_config1["N_episodes"], dqn_agent1, dqn_agent1.buffer, early_stopping=None)
 plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, "DQN Agent - discount_factor = 1")
 
 agent_config2 = {
-    "N_episodes": 1000,  # advised range [100, 1000]
+    "N_episodes": 1500,  # advised range [100, 1000]
     "discount_factor": 1 / 10,
     "lr": 0.00055,  # 1e-3,  # advised range [1e-3, 1e-4]
     "n_actions": env.action_space.n,
@@ -233,5 +234,5 @@ agent_config2 = {
 dqn_agent2 = DQNAgent(**agent_config2)
 # fill experience buffer
 simulate(int(agent_config2["buffer_size"] / 80 * rough_fill_percentage), random_agent, dqn_agent2.buffer)
-episode_reward_list, episode_number_of_steps = simulate(agent_config1["N_episodes"], dqn_agent2, dqn_agent2.buffer)
+episode_reward_list, episode_number_of_steps = simulate(agent_config1["N_episodes"], dqn_agent2, dqn_agent2.buffer, early_stopping=None)
 plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, "DQN Agent - discount_factor = 1/10")
