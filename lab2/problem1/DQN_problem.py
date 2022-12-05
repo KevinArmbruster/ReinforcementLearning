@@ -19,6 +19,7 @@ import torch
 import numpy as np
 import gym
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 from tqdm import trange
 from DQN_agent import Agent, RandomAgent, DQNAgent
 from lab2.problem1.Helper import Experience
@@ -178,8 +179,7 @@ random_agent = RandomAgent(agent_config["n_actions"])
 dqn_agent = DQNAgent(**agent_config)
 # fill experience buffer
 rough_fill_percentage = .1
-episode_reward_list, episode_number_of_steps = simulate(int(agent_config["buffer_size"] / 80 * rough_fill_percentage),
-                                                        random_agent, dqn_agent.buffer)
+# episode_reward_list, episode_number_of_steps = simulate(int(agent_config["buffer_size"] / 80 * rough_fill_percentage), random_agent, dqn_agent.buffer)
 # plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, "Random Agent")
 print("Buffer size = ", dqn_agent.buffer.__len__())
 
@@ -197,42 +197,116 @@ hs_config = {
 # idx, results, results1, search_space = hyper_parameter_search(hs_config, random_agent, n_ep_running_average)
 
 ### Training process
-print(agent_config)
-episode_reward_list, episode_number_of_steps = simulate(agent_config["N_episodes"], dqn_agent, dqn_agent.buffer)
-plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, "DQN Agent")
+# print(agent_config)
+# episode_reward_list, episode_number_of_steps = simulate(agent_config["N_episodes"], dqn_agent, dqn_agent.buffer)
+# plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, "DQN Agent")
 
 ### Save DQN
 # torch.save(dqn_agent.main_q_network, "neural-network-1.pth")
 
 ### e)
-agent_config1 = {
-    "N_episodes": 400,  # advised range [100, 1000]
-    "discount_factor": 1,
-    "lr": 0.00055,  # 1e-3,  # advised range [1e-3, 1e-4]
-    "n_actions": env.action_space.n,
-    "n_states": len(env.observation_space.high),
-    "buffer_size": 10000,  # advised range [5000, 30000]
-    "batch_size": 32,  # advised range [4, 128]
-    "hidden_layer_sizes": [64, 64]  # advised 1-2 layers with 8-128 neurons
-}
-dqn_agent1 = DQNAgent(**agent_config1)
-# fill experience buffer
-simulate(int(agent_config1["buffer_size"] / 80 * rough_fill_percentage), random_agent, dqn_agent1.buffer)
-episode_reward_list, episode_number_of_steps = simulate(agent_config1["N_episodes"], dqn_agent1, dqn_agent1.buffer, early_stopping=None)
-plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, "DQN Agent - discount_factor = 1")
+# agent_config1 = {
+#     "N_episodes": 300,  # advised range [100, 1000]
+#     "discount_factor": 99 / 100,
+#     "lr": 0.00055,  # 1e-3,  # advised range [1e-3, 1e-4]
+#     "n_actions": env.action_space.n,
+#     "n_states": len(env.observation_space.high),
+#     "buffer_size": 10000,  # advised range [5000, 30000]
+#     "batch_size": 32,  # advised range [4, 128]
+#     "hidden_layer_sizes": [64, 64]  # advised 1-2 layers with 8-128 neurons
+# }
+# dqn_agent1 = DQNAgent(**agent_config1)
+# # fill experience buffer
+# simulate(int(agent_config1["buffer_size"] / 80 * rough_fill_percentage), random_agent, dqn_agent1.buffer)
+# episode_reward_list, episode_number_of_steps = simulate(agent_config1["N_episodes"], dqn_agent1, dqn_agent1.buffer, early_stopping=None)
+# plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, "DQN Agent - episodes = 300")
+#
+# agent_config2 = {
+#     "N_episodes": 1500,  # advised range [100, 1000]
+#     "discount_factor": 99 / 100,
+#     "lr": 0.00055,  # 1e-3,  # advised range [1e-3, 1e-4]
+#     "n_actions": env.action_space.n,
+#     "n_states": len(env.observation_space.high),
+#     "buffer_size": 10000,  # advised range [5000, 30000]
+#     "batch_size": 32,  # advised range [4, 128]
+#     "hidden_layer_sizes": [64, 64]  # advised 1-2 layers with 8-128 neurons
+# }
+# dqn_agent2 = DQNAgent(**agent_config2)
+# # fill experience buffer
+# simulate(int(agent_config2["buffer_size"] / 80 * rough_fill_percentage), random_agent, dqn_agent2.buffer)
+# episode_reward_list, episode_number_of_steps = simulate(agent_config2["N_episodes"], dqn_agent2, dqn_agent2.buffer, early_stopping=None)
+# plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, "DQN Agent - episodes = 1500")
+#
+#
+# agent_config3 = {
+#     "N_episodes": 1000,  # advised range [100, 1000]
+#     "discount_factor": 99 / 100,
+#     "lr": 0.00055,  # 1e-3,  # advised range [1e-3, 1e-4]
+#     "n_actions": env.action_space.n,
+#     "n_states": len(env.observation_space.high),
+#     "buffer_size": 5000,  # advised range [5000, 30000]
+#     "batch_size": 32,  # advised range [4, 128]
+#     "hidden_layer_sizes": [64, 64]  # advised 1-2 layers with 8-128 neurons
+# }
+# dqn_agent3 = DQNAgent(**agent_config3)
+# # fill experience buffer
+# simulate(int(agent_config3["buffer_size"] / 80 * rough_fill_percentage), random_agent, dqn_agent3.buffer)
+# episode_reward_list, episode_number_of_steps = simulate(agent_config3["N_episodes"], dqn_agent3, dqn_agent3.buffer, early_stopping=230)
+# plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, "DQN Agent - buffer_size = 5000")
+#
+# agent_config4 = {
+#     "N_episodes": 1000,  # advised range [100, 1000]
+#     "discount_factor": 99 / 100,
+#     "lr": 0.00055,  # 1e-3,  # advised range [1e-3, 1e-4]
+#     "n_actions": env.action_space.n,
+#     "n_states": len(env.observation_space.high),
+#     "buffer_size": 30000,  # advised range [5000, 30000]
+#     "batch_size": 32,  # advised range [4, 128]
+#     "hidden_layer_sizes": [64, 64]  # advised 1-2 layers with 8-128 neurons
+# }
+# dqn_agent4 = DQNAgent(**agent_config4)
+# # fill experience buffer
+# simulate(int(agent_config4["buffer_size"] / 80 * rough_fill_percentage), random_agent, dqn_agent4.buffer)
+# episode_reward_list, episode_number_of_steps = simulate(agent_config4["N_episodes"], dqn_agent4, dqn_agent4.buffer, early_stopping=230)
+# plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, "DQN Agent - buffer_size = 30000")
 
-agent_config2 = {
-    "N_episodes": 1500,  # advised range [100, 1000]
-    "discount_factor": 1 / 10,
-    "lr": 0.00055,  # 1e-3,  # advised range [1e-3, 1e-4]
-    "n_actions": env.action_space.n,
-    "n_states": len(env.observation_space.high),
-    "buffer_size": 10000,  # advised range [5000, 30000]
-    "batch_size": 32,  # advised range [4, 128]
-    "hidden_layer_sizes": [64, 64]  # advised 1-2 layers with 8-128 neurons
-}
-dqn_agent2 = DQNAgent(**agent_config2)
-# fill experience buffer
-simulate(int(agent_config2["buffer_size"] / 80 * rough_fill_percentage), random_agent, dqn_agent2.buffer)
-episode_reward_list, episode_number_of_steps = simulate(agent_config1["N_episodes"], dqn_agent2, dqn_agent2.buffer, early_stopping=None)
-plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, "DQN Agent - discount_factor = 1/10")
+### g)
+# model = torch.load('neural-network-1.pth')
+# heights = np.arange(0, 1.5, 0.1)
+# angles = np.arange(-np.pi, np.pi, 0.1)
+# prod = np.array(list(itertools.product(heights, angles)))
+# zeros = np.zeros(len(prod))
+# heights = prod[:, 0]
+# angles = prod[:, 1]
+#
+# states = np.asarray([zeros, heights, zeros, zeros, angles, zeros, zeros, zeros], dtype=np.float32).T
+# q = model(torch.from_numpy(states))
+# value, actions = torch.max(q, axis=1)
+#
+#
+# def d3_plot(x, y, z, xlabel, ylabel, zlabel, title, lim=False):
+#     ax = plt.figure().add_subplot(projection='3d')
+#
+#     colors = ('c', 'm', 'b', 'g')
+#     c_list = []
+#     for a in actions:
+#         c_list.extend(colors[a])
+#
+#     ax.scatter(xs=x, ys=y, zs=z, zdir='z', c=c_list)
+#
+#     # ax.legend()
+#     ax.zaxis.set_major_locator(MaxNLocator(integer=True))
+#     if lim:
+#         ax.set_zlim(0, 3)
+#     ax.set_xlabel(xlabel)
+#     ax.set_ylabel(ylabel)
+#     ax.set_zlabel(zlabel)
+#
+#     ax.set_title(title)
+#
+#     ax.view_init(elev=10., azim=-15, roll=0)
+#     plt.show()
+#
+#
+# d3_plot(heights, angles, actions, 'Height', 'Angle', 'Action', "Policy in restricted state space", True)
+# d3_plot(heights, angles, value.detach(), 'Height', 'Angle', 'Value', "Value function in restricted state space")

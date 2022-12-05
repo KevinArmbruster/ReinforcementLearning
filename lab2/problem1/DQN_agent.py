@@ -92,8 +92,8 @@ class DQNAgent(Agent):
     def backward(self):
         batch = self.buffer.sample_batch(self.batch_size)
         states, actions, rewards, next_states, dones = batch
-        states = torch.tensor(states)
-        next_states = torch.tensor(next_states)
+        states = torch.from_numpy(np.array(states))
+        next_states = torch.from_numpy(np.array(next_states))
         dones = torch.tensor(np.invert(dones), dtype=torch.float32)  # invert dones
         rewards = torch.tensor(rewards, dtype=torch.float32)
 
