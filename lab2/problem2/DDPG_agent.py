@@ -99,7 +99,7 @@ class DDPGAgent(Agent):
         soft_updates(network=self.main_actor_network, target_network=self.target_actor_network, tau=1)
         soft_updates(network=self.main_critic_network, target_network=self.target_critic_network, tau=1)
 
-    def forward(self, state: torch.Tensor) -> torch.Tensor:
+    def forward(self, state: torch.Tensor) -> np.ndarray:
         # predict next action + exploration_noise
         exploration_noise = self.ornstein_uhlenbeck_noise()
         action = self.main_actor_network(state)
@@ -127,19 +127,19 @@ class DDPGAgent(Agent):
         ### Update Critic Value Network
         # Targets for Critic
         target_action = self.target_actor_network(next_states)
-        target_Q_value = torch.squeeze(self.target_critic_network(next_states, target_action))
-        targets = rewards + self.discount_factor * dones * target_Q_value
-        assert (targets.shape == (self.batch_size,))
+        target_Q_value = torch.squeeze(self.target_critic_network(next_states, target_action.detach()))
+        Q_targets = rewards + self.discount_factor * dones * target_Q_value
+        assert (Q_targets.shape == (self.batch_size,))
 
         # current Q value of selected actions
         Q_value = torch.squeeze(self.main_critic_network(states, actions))
         assert (Q_value.shape == (self.batch_size,))
 
         # update critic
-        self.main_critic_network.backward(Q_value, targets)
+        self.main_critic_network.backward(Q_value, Q_targets)
 
-        ### Update Actor Policy Network
         if self.time_step % self.update_freq == 0:
+            ### Update Actor Policy Network
             policy_loss = -self.main_critic_network(states, self.main_actor_network(states)).mean()
             self.main_actor_network.backward(policy_loss)
 

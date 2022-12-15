@@ -128,7 +128,7 @@ class ActorPolicyNetwork(nn.Module):
 
         return out
 
-    def backward(self, policy_loss):
+    def backward(self, policy_loss: torch.Tensor):
         self.optimizer.zero_grad()
         policy_loss.backward()
         nn.utils.clip_grad_norm_(self.parameters(), max_norm=self.max_grad_norm)
@@ -153,7 +153,7 @@ class CriticValueNetwork(nn.Module):
         self.setup_optimizer()
 
     def setup_NN(self, dim_states, hidden_layer_sizes, out_dim, dim_actions, intermediate_af=nn.ReLU(),
-                 last_af=nn.Tanh()):
+                 last_af=None):
         layers = nn.ModuleList()
         activation_functions = nn.ModuleList()
 
@@ -195,9 +195,9 @@ class CriticValueNetwork(nn.Module):
 
         return out
 
-    def backward(self, current, targets):
+    def backward(self, Q_vals: torch.Tensor, Q_targets: torch.Tensor):
         self.optimizer.zero_grad()
-        loss = nn.functional.mse_loss(current, targets)
+        loss = nn.functional.mse_loss(Q_vals, Q_targets)
         loss.backward()
         nn.utils.clip_grad_norm_(self.parameters(), max_norm=self.max_grad_norm)
         self.optimizer.step()
