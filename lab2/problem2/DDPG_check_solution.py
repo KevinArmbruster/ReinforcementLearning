@@ -14,11 +14,12 @@
 #
 
 
+import gym
 # Load packages
 import numpy as np
-import gym
 import torch
 from tqdm import trange
+
 
 def running_average(x, N):
     ''' Function used to compute the running average
@@ -26,10 +27,11 @@ def running_average(x, N):
     '''
     if len(x) >= N:
         y = np.copy(x)
-        y[N-1:] = np.convolve(x, np.ones((N, )) / N, mode='valid')
+        y[N - 1:] = np.convolve(x, np.ones((N,)) / N, mode='valid')
     else:
         y = np.zeros_like(x)
     return y
+
 
 # Load model
 try:
@@ -44,7 +46,7 @@ env = gym.make('LunarLanderContinuous-v2')
 env.reset()
 
 # Parameters
-N_EPISODES = 50            # Number of episodes to run for trainings
+N_EPISODES = 50  # Number of episodes to run for trainings
 CONFIDENCE_PASS = 125
 
 # Reward
@@ -81,12 +83,13 @@ for i in EPISODES:
 avg_reward = np.mean(episode_reward_list)
 confidence = np.std(episode_reward_list) * 1.96 / np.sqrt(N_EPISODES)
 
-
 print('Policy achieves an average total reward of {:.1f} +/- {:.1f} with confidence 95%.'.format(
-                avg_reward,
-                confidence))
+    avg_reward,
+    confidence))
 
 if avg_reward - confidence >= CONFIDENCE_PASS:
     print('Your policy passed the test!')
 else:
-    print("Your policy did not pass the test! The average reward of your policy needs to be greater than {} with 95% confidence".format(CONFIDENCE_PASS))
+    print(
+        "Your policy did not pass the test! The average reward of your policy needs to be greater than {} with 95% confidence".format(
+            CONFIDENCE_PASS))

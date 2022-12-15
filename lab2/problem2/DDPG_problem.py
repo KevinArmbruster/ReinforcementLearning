@@ -13,12 +13,12 @@
 # Last update: 20th November 2020, by alessior@kth.se
 #
 
+import gym
+import matplotlib.pyplot as plt
 # Load packages
 import numpy as np
-import gym
-import torch
-import matplotlib.pyplot as plt
 from tqdm import trange
+
 from DDPG_agent import RandomAgent
 
 
@@ -28,20 +28,21 @@ def running_average(x, N):
     '''
     if len(x) >= N:
         y = np.copy(x)
-        y[N-1:] = np.convolve(x, np.ones((N, )) / N, mode='valid')
+        y[N - 1:] = np.convolve(x, np.ones((N,)) / N, mode='valid')
     else:
         y = np.zeros_like(x)
     return y
+
 
 # Import and initialize Mountain Car Environment
 env = gym.make('LunarLanderContinuous-v2')
 env.reset()
 
 # Parameters
-N_episodes = 100               # Number of episodes to run for training
-discount_factor = 0.95         # Value of gamma
-n_ep_running_average = 50      # Running average of 50 episodes
-m = len(env.action_space.high) # dimensionality of the action
+N_episodes = 100  # Number of episodes to run for training
+discount_factor = 0.95  # Value of gamma
+n_ep_running_average = 50  # Running average of 50 episodes
+m = len(env.action_space.high)  # dimensionality of the action
 
 # Reward
 episode_reward_list = []  # Used to save episodes reward
@@ -73,7 +74,7 @@ for i in EPISODES:
 
         # Update state for next iteration
         state = next_state
-        t+= 1
+        t += 1
 
     # Append episode reward
     episode_reward_list.append(total_episode_reward)
@@ -86,15 +87,14 @@ for i in EPISODES:
     # of the last episode, average reward, average number of steps)
     EPISODES.set_description(
         "Episode {} - Reward/Steps: {:.1f}/{} - Avg. Reward/Steps: {:.1f}/{}".format(
-        i, total_episode_reward, t,
-        running_average(episode_reward_list, n_ep_running_average)[-1],
-        running_average(episode_number_of_steps, n_ep_running_average)[-1]))
-
+            i, total_episode_reward, t,
+            running_average(episode_reward_list, n_ep_running_average)[-1],
+            running_average(episode_number_of_steps, n_ep_running_average)[-1]))
 
 # Plot Rewards and steps
 fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(16, 9))
-ax[0].plot([i for i in range(1, N_episodes+1)], episode_reward_list, label='Episode reward')
-ax[0].plot([i for i in range(1, N_episodes+1)], running_average(
+ax[0].plot([i for i in range(1, N_episodes + 1)], episode_reward_list, label='Episode reward')
+ax[0].plot([i for i in range(1, N_episodes + 1)], running_average(
     episode_reward_list, n_ep_running_average), label='Avg. episode reward')
 ax[0].set_xlabel('Episodes')
 ax[0].set_ylabel('Total reward')
@@ -102,8 +102,8 @@ ax[0].set_title('Total Reward vs Episodes')
 ax[0].legend()
 ax[0].grid(alpha=0.3)
 
-ax[1].plot([i for i in range(1, N_episodes+1)], episode_number_of_steps, label='Steps per episode')
-ax[1].plot([i for i in range(1, N_episodes+1)], running_average(
+ax[1].plot([i for i in range(1, N_episodes + 1)], episode_number_of_steps, label='Steps per episode')
+ax[1].plot([i for i in range(1, N_episodes + 1)], running_average(
     episode_number_of_steps, n_ep_running_average), label='Avg. number of steps per episode')
 ax[1].set_xlabel('Episodes')
 ax[1].set_ylabel('Total number of steps')

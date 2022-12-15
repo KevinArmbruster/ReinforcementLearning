@@ -26,6 +26,7 @@ class Agent(object):
         Attributes:
             n_actions (int): where we store the dimensionality of an action
     '''
+
     def __init__(self, n_actions: int):
         self.n_actions = n_actions
 
@@ -40,6 +41,7 @@ class Agent(object):
 
 class RandomAgent(Agent):
     ''' Agent taking actions uniformly at random, child of the class Agent'''
+
     def __init__(self, n_actions: int):
         super(RandomAgent, self).__init__(n_actions)
 
