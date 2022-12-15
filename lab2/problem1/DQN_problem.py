@@ -168,7 +168,7 @@ agent_config = {
     "discount_factor": 99 / 100,
     "lr": 0.00055,  # 1e-3,  # advised range [1e-3, 1e-4]
     "n_actions": env.action_space.n,
-    "n_states": len(env.observation_space.high),
+    "dim_states": len(env.observation_space.high),
     "buffer_size": 10000,  # advised range [5000, 30000]
     "batch_size": 32,  # advised range [4, 128]
     "hidden_layer_sizes": [64, 64]  # advised 1-2 layers with 8-128 neurons
@@ -188,7 +188,7 @@ hs_config = {
     "N_episodes": [1000],  # np.linspace(100, 500, 3),
     "discount_factor": [49 / 50, 99 / 100, 499 / 500],
     "n_actions": [env.action_space.n],
-    "n_states": [len(env.observation_space.high)],
+    "dim_states": [len(env.observation_space.high)],
     "buffer_size": [10000],  # np.linspace(5000, 30000, 3).astype(int),
     "batch_size": [16, 32, 64],  # np.linspace(16, 128, 3).astype(int),
     "lr": np.linspace(1e-3, 1e-4, 3),
@@ -210,7 +210,7 @@ hs_config = {
 #     "discount_factor": 99 / 100,
 #     "lr": 0.00055,  # 1e-3,  # advised range [1e-3, 1e-4]
 #     "n_actions": env.action_space.n,
-#     "n_states": len(env.observation_space.high),
+#     "dim_states": len(env.observation_space.high),
 #     "buffer_size": 10000,  # advised range [5000, 30000]
 #     "batch_size": 32,  # advised range [4, 128]
 #     "hidden_layer_sizes": [64, 64]  # advised 1-2 layers with 8-128 neurons
@@ -226,7 +226,7 @@ hs_config = {
 #     "discount_factor": 99 / 100,
 #     "lr": 0.00055,  # 1e-3,  # advised range [1e-3, 1e-4]
 #     "n_actions": env.action_space.n,
-#     "n_states": len(env.observation_space.high),
+#     "dim_states": len(env.observation_space.high),
 #     "buffer_size": 10000,  # advised range [5000, 30000]
 #     "batch_size": 32,  # advised range [4, 128]
 #     "hidden_layer_sizes": [64, 64]  # advised 1-2 layers with 8-128 neurons
@@ -243,7 +243,7 @@ hs_config = {
 #     "discount_factor": 99 / 100,
 #     "lr": 0.00055,  # 1e-3,  # advised range [1e-3, 1e-4]
 #     "n_actions": env.action_space.n,
-#     "n_states": len(env.observation_space.high),
+#     "dim_states": len(env.observation_space.high),
 #     "buffer_size": 5000,  # advised range [5000, 30000]
 #     "batch_size": 32,  # advised range [4, 128]
 #     "hidden_layer_sizes": [64, 64]  # advised 1-2 layers with 8-128 neurons
@@ -259,7 +259,7 @@ hs_config = {
 #     "discount_factor": 99 / 100,
 #     "lr": 0.00055,  # 1e-3,  # advised range [1e-3, 1e-4]
 #     "n_actions": env.action_space.n,
-#     "n_states": len(env.observation_space.high),
+#     "dim_states": len(env.observation_space.high),
 #     "buffer_size": 30000,  # advised range [5000, 30000]
 #     "batch_size": 32,  # advised range [4, 128]
 #     "hidden_layer_sizes": [64, 64]  # advised 1-2 layers with 8-128 neurons

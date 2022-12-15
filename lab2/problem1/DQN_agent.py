@@ -58,10 +58,10 @@ class RandomAgent(Agent):
 class DQNAgent(Agent):
     ''' Agent taking actions uniformly at random, child of the class Agent'''
 
-    def __init__(self, n_actions: int, n_states: int, buffer_size: int, discount_factor: float,
+    def __init__(self, n_actions: int, dim_states: int, buffer_size: int, discount_factor: float,
                  batch_size: int, hidden_layer_sizes: list, lr: float, **kwargs):
         super(DQNAgent, self).__init__(n_actions)
-        self.n_states = n_states
+        self.dim_states = dim_states
 
         # MDP
         self.discount_factor = discount_factor
@@ -77,10 +77,10 @@ class DQNAgent(Agent):
         self.target_nn_update_frequency = int(buffer_size / batch_size)
         self.hidden_layer_sizes = hidden_layer_sizes
         self.lr = lr
-        self.main_q_network = StateActionValueNetwork(n_states=n_states, n_actions=n_actions,
+        self.main_q_network = StateActionValueNetwork(dim_states=dim_states, n_actions=n_actions,
                                                       hidden_layer_sizes=self.hidden_layer_sizes, lr=lr)
         summary(self.main_q_network)
-        self.target_q_network = StateActionValueNetwork(n_states=n_states, n_actions=n_actions,
+        self.target_q_network = StateActionValueNetwork(dim_states=dim_states, n_actions=n_actions,
                                                         hidden_layer_sizes=self.hidden_layer_sizes,
                                                         lr=lr)  # ide errors if not done initially
         self.__update_target_network()

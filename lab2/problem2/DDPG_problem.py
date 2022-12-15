@@ -17,9 +17,10 @@ import gym
 import matplotlib.pyplot as plt
 # Load packages
 import numpy as np
+import torch
 from tqdm import trange
 
-from DDPG_agent import Agent, RandomAgent
+from DDPG_agent import Agent, RandomAgent, DDPGAgent
 from lab2.problem1.Helper import ExperienceReplayBuffer, Experience
 
 
@@ -49,14 +50,14 @@ def simulate(agent: Agent, buffer: ExperienceReplayBuffer = None, N_episodes=200
 
         while not done:
             # Take a random action
-            action = agent.forward(state)
+            action = agent.forward(torch.from_numpy(state))
 
             # Get next state and reward.  The done variable
             # will be True if you reached the goal position,
             # False otherwise
             next_state, reward, done, _ = env.step(action)
 
-            if buffer:
+            if buffer is not None:
                 exp = Experience(state, action, reward, next_state, done)
                 buffer.append(exp)
 
@@ -119,21 +120,34 @@ env.reset()
 # Parameters
 n_ep_running_average = 50  # Running average of 50 episodes
 agent_config = {
-    "N_episodes": 1000,  # advised range [100, 1000]
-    "discount_factor": 0.95,
-    "lr_actor": 0.00055,  # 1e-3,  # advised range [1e-3, 1e-4]
-    "lr_critic": 0.00055,  # 1e-3,  # advised range [1e-3, 1e-4]
-    "n_actions": len(env.action_space.high),
-    "n_states": len(env.observation_space.high),
-    "buffer_size": 10000,  # advised range [5000, 30000]
-    "batch_size": 32,  # advised range [4, 128]
-    "hidden_layer_sizes": [64, 64]  # advised 1-2 layers with 8-128 neurons
+    # γ = 0.99, L = 30000, TE = 300, τ = 10−3,N = 64, d = 2 with noise parameters µ = 0.15, σ = 0.2
+    "N_episodes": 300,
+    "discount_factor": 0.99,
+    "lr_actor": 5 * 1e-5,
+    "lr_critic": 5 * 1e-4,
+    "dim_actions": len(env.action_space.high),
+    "dim_states": len(env.observation_space.high),
+    "buffer_size": 30000,
+    "batch_size": 64,
+    "hidden_layer_sizes": [400, 200],
+    "update_const": 10 ** -3,
+    "update_freq": 2,
+    "noise_mu": 0.15,
+    "noise_sigma": 0.2,
 }
 
 # Agent initialization
-rnd_agent = RandomAgent(agent_config["n_actions"])
+rnd_agent = RandomAgent(agent_config["dim_actions"])
+ddpg_agent = DDPGAgent(**agent_config)
+
+# fill buffer with random actions
+simulate(rnd_agent, ddpg_agent.buffer, int(agent_config["N_episodes"] / 50))
+# plot_rewards_and_steps(episode_reward_list, episode_number_of_steps)
 
 # Training process
-episode_reward_list, episode_number_of_steps = simulate(rnd_agent, None, 100)
-
+episode_reward_list, episode_number_of_steps = simulate(ddpg_agent, ddpg_agent.buffer, agent_config["N_episodes"])
 plot_rewards_and_steps(episode_reward_list, episode_number_of_steps)
+
+### Save DDPG
+torch.save(ddpg_agent.main_actor_network, "neural-network-2-actor.pth")
+torch.save(ddpg_agent.main_critic_network, "neural-network-2-critic.pth")
