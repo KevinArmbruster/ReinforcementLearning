@@ -54,3 +54,11 @@ class RandomAgent(Agent):
                     the parent class Agent.
         '''
         return np.clip(-1 + 2 * np.random.rand(self.n_actions), -1, 1)
+
+
+class DDPGAgent(Agent):
+    def __init__(self, n_actions: int):
+        super(DDPGAgent, self).__init__(n_actions)
+
+    def forward(self, state: np.ndarray) -> np.ndarray:
+        return np.clip(-1 + 2 * np.random.rand(self.n_actions), -1, 1)
