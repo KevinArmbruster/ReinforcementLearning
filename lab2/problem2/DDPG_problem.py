@@ -141,13 +141,117 @@ rnd_agent = RandomAgent(agent_config["dim_actions"])
 ddpg_agent = DDPGAgent(**agent_config)
 
 # fill buffer with random actions
-simulate(rnd_agent, ddpg_agent.buffer, int(agent_config["N_episodes"] / 50))
+episode_reward_list, episode_number_of_steps = simulate(rnd_agent, ddpg_agent.buffer, int(agent_config["N_episodes"]))
+plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, title="Random Agent")
+
+# Training process
+episode_reward_list, episode_number_of_steps = simulate(ddpg_agent, ddpg_agent.buffer, agent_config["N_episodes"])
+plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, title="DDPG Agent")
+
+### Save DDPG
+# torch.save(ddpg_agent.main_actor_network, "neural-network-2-actor.pth")
+# torch.save(ddpg_agent.main_critic_network, "neural-network-2-critic.pth")
+
+agent_config = {
+    # γ = 0.99, L = 30000, TE = 300, τ = 10−3,N = 64, d = 2 with noise parameters µ = 0.15, σ = 0.2
+    "N_episodes": 300,
+    "discount_factor": 1,
+    "lr_actor": 5e-5,
+    "lr_critic": 5e-4,
+    "dim_actions": len(env.action_space.high),
+    "dim_states": len(env.observation_space.high),
+    "buffer_size": 30000,
+    "batch_size": 64,
+    "hidden_layer_sizes": [400, 200],
+    "update_const": 1e-3,
+    "update_freq": 2,
+    "noise_mu": 0.15,
+    "noise_sigma": 0.2,
+}
+ddpg_agent = DDPGAgent(**agent_config)
+
+# fill buffer with random actions
+simulate(rnd_agent, ddpg_agent.buffer, int(agent_config["N_episodes"]))
 # plot_rewards_and_steps(episode_reward_list, episode_number_of_steps)
 
 # Training process
 episode_reward_list, episode_number_of_steps = simulate(ddpg_agent, ddpg_agent.buffer, agent_config["N_episodes"])
-plot_rewards_and_steps(episode_reward_list, episode_number_of_steps)
+plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, title="DDPG Agent - discount factor = 1")
 
-### Save DDPG
-torch.save(ddpg_agent.main_actor_network, "neural-network-2-actor.pth")
-torch.save(ddpg_agent.main_critic_network, "neural-network-2-critic.pth")
+agent_config = {
+    # γ = 0.99, L = 30000, TE = 300, τ = 10−3,N = 64, d = 2 with noise parameters µ = 0.15, σ = 0.2
+    "N_episodes": 300,
+    "discount_factor": 0.8,
+    "lr_actor": 5e-5,
+    "lr_critic": 5e-4,
+    "dim_actions": len(env.action_space.high),
+    "dim_states": len(env.observation_space.high),
+    "buffer_size": 30000,
+    "batch_size": 64,
+    "hidden_layer_sizes": [400, 200],
+    "update_const": 1e-3,
+    "update_freq": 2,
+    "noise_mu": 0.15,
+    "noise_sigma": 0.2,
+}
+ddpg_agent = DDPGAgent(**agent_config)
+
+# fill buffer with random actions
+simulate(rnd_agent, ddpg_agent.buffer, int(agent_config["N_episodes"]))
+# plot_rewards_and_steps(episode_reward_list, episode_number_of_steps)
+
+# Training process
+episode_reward_list, episode_number_of_steps = simulate(ddpg_agent, ddpg_agent.buffer, agent_config["N_episodes"])
+plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, title="DDPG Agent - discount factor = 0.8")
+
+agent_config = {
+    # γ = 0.99, L = 30000, TE = 300, τ = 10−3,N = 64, d = 2 with noise parameters µ = 0.15, σ = 0.2
+    "N_episodes": 300,
+    "discount_factor": 0.99,
+    "lr_actor": 5e-5,
+    "lr_critic": 5e-4,
+    "dim_actions": len(env.action_space.high),
+    "dim_states": len(env.observation_space.high),
+    "buffer_size": 10000,
+    "batch_size": 64,
+    "hidden_layer_sizes": [400, 200],
+    "update_const": 1e-3,
+    "update_freq": 2,
+    "noise_mu": 0.15,
+    "noise_sigma": 0.2,
+}
+ddpg_agent = DDPGAgent(**agent_config)
+
+# fill buffer with random actions
+simulate(rnd_agent, ddpg_agent.buffer, int(agent_config["N_episodes"]))
+# plot_rewards_and_steps(episode_reward_list, episode_number_of_steps)
+
+# Training process
+episode_reward_list, episode_number_of_steps = simulate(ddpg_agent, ddpg_agent.buffer, agent_config["N_episodes"])
+plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, title="DDPG Agent - buffer size = 10.000")
+
+agent_config = {
+    # γ = 0.99, L = 30000, TE = 300, τ = 10−3,N = 64, d = 2 with noise parameters µ = 0.15, σ = 0.2
+    "N_episodes": 300,
+    "discount_factor": 0.99,
+    "lr_actor": 5e-5,
+    "lr_critic": 5e-4,
+    "dim_actions": len(env.action_space.high),
+    "dim_states": len(env.observation_space.high),
+    "buffer_size": 60000,
+    "batch_size": 64,
+    "hidden_layer_sizes": [400, 200],
+    "update_const": 1e-3,
+    "update_freq": 2,
+    "noise_mu": 0.15,
+    "noise_sigma": 0.2,
+}
+ddpg_agent = DDPGAgent(**agent_config)
+
+# fill buffer with random actions
+simulate(rnd_agent, ddpg_agent.buffer, int(agent_config["N_episodes"]))
+# plot_rewards_and_steps(episode_reward_list, episode_number_of_steps)
+
+# Training process
+episode_reward_list, episode_number_of_steps = simulate(ddpg_agent, ddpg_agent.buffer, agent_config["N_episodes"])
+plot_rewards_and_steps(episode_reward_list, episode_number_of_steps, title="DDPG Agent - buffer size = 60.000")
