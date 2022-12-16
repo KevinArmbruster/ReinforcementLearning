@@ -23,7 +23,7 @@ from matplotlib.ticker import MaxNLocator
 from tqdm import trange
 
 from DDPG_agent import Agent, RandomAgent, DDPGAgent
-from lab2.problem1.Helper import ExperienceReplayBuffer, Experience
+from lab2.Helper import ExperienceReplayBuffer, Experience
 
 
 def running_average(x, N):

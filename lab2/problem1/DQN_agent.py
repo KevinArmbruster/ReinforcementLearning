@@ -19,7 +19,7 @@ import torch
 import numpy as np
 from copy import deepcopy
 from torchinfo import summary
-from lab2.problem1.Helper import ExperienceReplayBuffer, StateActionValueNetwork
+from lab2.Helper import ExperienceReplayBuffer, StateActionValueNetwork
 
 
 class Agent(object):

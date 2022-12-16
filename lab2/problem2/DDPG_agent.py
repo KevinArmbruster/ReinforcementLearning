@@ -17,7 +17,7 @@
 import numpy as np
 import torch
 
-from lab2.problem1.Helper import ActorPolicyNetwork, CriticValueNetwork, ExperienceReplayBuffer
+from lab2.Helper import ActorPolicyNetwork, CriticValueNetwork, ExperienceReplayBuffer
 from lab2.problem2.DDPG_soft_updates import soft_updates
 
 

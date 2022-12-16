@@ -15,14 +15,12 @@
 import itertools
 
 # Load packages
-import torch
 import numpy as np
 import gym
 import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
 from tqdm import trange
 from DQN_agent import Agent, RandomAgent, DQNAgent
-from lab2.problem1.Helper import Experience
+from lab2.Helper import Experience
 
 
 def running_average(x, N):
